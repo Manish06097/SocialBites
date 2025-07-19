@@ -29,9 +29,6 @@ const Header = () => {
               )}
               <span className="sr-only">Open Cart</span>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/vendor/login">Vendor Login</Link>
-            </Button>
           </div>
         </div>
       </header>
