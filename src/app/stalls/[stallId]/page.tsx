@@ -40,7 +40,7 @@ export default function StallPage() {
             data-ai-hint="food stall"
           />
         </div>
-        <div className="container mx-auto -mt-12 px-4 md:-mt-16 md:px-6">
+        <div className="container mx-auto -mt-10 px-4 md:-mt-14 md:px-6">
             <div className="flex items-end gap-4">
                  <Image
                     src={stall.logoUrl}
