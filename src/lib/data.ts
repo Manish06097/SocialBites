@@ -1,5 +1,11 @@
 import type { Stall, TrendingItem } from './types';
 
+export const foodCourts = [
+  { id: 'fc1', name: 'Vesu Food Plaza' },
+  { id: 'fc2', name: 'Piplod Food Fest' },
+  { id: 'fc3', name: 'Adajan Eateria' },
+];
+
 export const stalls: Stall[] = [
   {
     id: 's1',
