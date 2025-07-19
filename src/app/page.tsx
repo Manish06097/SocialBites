@@ -1,7 +1,7 @@
+
 'use client';
 
 import { useState, useMemo, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { stalls, trendingItems, foodCourts } from '@/lib/data';
 import type { Stall } from '@/lib/types';
 import StallCard from '@/components/StallCard';
@@ -11,12 +11,22 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 
 function WelcomeMessage() {
-  const searchParams = useSearchParams();
-  const table = searchParams.get('table');
+  const [table, setTable] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const guestSessionStr = localStorage.getItem('guestSession');
+      if (guestSessionStr) {
+        const guestSession = JSON.parse(guestSessionStr);
+        setTable(guestSession.tableId);
+      }
+    } catch (error) {
+      console.error("Could not parse guest session", error);
+    }
+  }, []);
 
   if (!table) return null;
 
@@ -34,17 +44,23 @@ function HomePageContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>('All');
   const { selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const foodCourtId = searchParams.get('foodCourtId');
-    if (foodCourtId) {
-      const court = foodCourts.find(fc => fc.id === foodCourtId);
-      if (court) {
-        setSelectedFoodCourt(court);
-      }
+    try {
+        const guestSessionStr = localStorage.getItem('guestSession');
+        if (guestSessionStr) {
+            const guestSession = JSON.parse(guestSessionStr);
+            if (guestSession.foodCourtId) {
+                const court = foodCourts.find(fc => fc.id === guestSession.foodCourtId);
+                if (court && court.id !== selectedFoodCourt.id) {
+                    setSelectedFoodCourt(court);
+                }
+            }
+        }
+    } catch(error) {
+        console.error("Could not read food court from guest session", error);
     }
-  }, [searchParams, setSelectedFoodCourt]);
+  }, [selectedFoodCourt.id, setSelectedFoodCourt]);
 
   const stallsForCourt = useMemo(() => {
     return stalls.filter(stall => stall.foodCourtId === selectedFoodCourt.id);

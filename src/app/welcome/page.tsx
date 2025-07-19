@@ -12,13 +12,14 @@ export default function WelcomePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Reconstruct the redirect URL from the current search params
-    const redirectUrl = `/?${searchParams.toString()}`;
+    // The homepage will now read from localStorage, so we just redirect to '/'
+    const redirectUrl = '/';
     const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
 
     const handleGuest = () => {
         try {
             const guestSession = {
+                sessionId: `guest-${Math.random().toString(36).substring(2, 9)}`,
                 tableId: searchParams.get('table'),
                 foodCourtId: searchParams.get('foodCourtId'),
                 stallId: searchParams.get('stallId'),
@@ -26,7 +27,8 @@ export default function WelcomePage() {
                 expiry: new Date().getTime() + 60 * 60 * 1000, 
             };
             localStorage.setItem('guestSession', JSON.stringify(guestSession));
-        } catch (error) {
+        } catch (error)
+ {
             console.error("Could not save guest session to localStorage", error);
         }
         router.push(redirectUrl);
