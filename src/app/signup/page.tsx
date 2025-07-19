@@ -1,5 +1,8 @@
 
+'use client';
+
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function UserSignupPage() {
-  // In a real app, this would redirect to the stored redirect URL after login.
-  // For this demo, it will just go to the homepage.
-  const successfulSignupRedirectPath = '/';
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
+
+  const successfulSignupRedirectPath = redirect || '/';
+  const loginPath = redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login';
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
@@ -43,7 +48,7 @@ export default function UserSignupPage() {
           </div>
            <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="underline">
+            <Link href={loginPath} className="underline">
               Login
             </Link>
           </div>

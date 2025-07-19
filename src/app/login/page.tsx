@@ -1,5 +1,8 @@
 
+'use client';
+
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,9 +11,11 @@ import { Label } from '@/components/ui/label';
 import { User } from 'lucide-react';
 
 export default function UserLoginPage() {
-  // In a real app, this would redirect to the stored redirect URL after login.
-  // For this demo, it will just go to the homepage.
-  const successfulLoginRedirectPath = '/';
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
+
+  const successfulLoginRedirectPath = redirect || '/';
+  const signupPath = redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup';
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
@@ -50,7 +55,7 @@ export default function UserLoginPage() {
           </div>
            <div className="mt-4 text-center text-sm">
             Don't have an account?{' '}
-            <Link href="/signup" className="underline">
+            <Link href={signupPath} className="underline">
               Sign up
             </Link>
           </div>
