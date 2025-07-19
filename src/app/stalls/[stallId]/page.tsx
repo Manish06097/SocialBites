@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { getStallById } from '@/lib/data';
 import type { MenuItem, Stall } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,19 +37,21 @@ export default function StallPage({ params }: { params: { stallId: string } }) {
             data-ai-hint="food stall"
           />
         </div>
-        <div className="container mx-auto -mt-16 px-4 md:px-6">
-          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-end md:text-left">
-            <Image
-              src={stall.logoUrl}
-              alt={`${stall.name} logo`}
-              width={128}
-              height={128}
-              className="h-32 w-32 rounded-full border-4 border-background bg-background object-cover"
-              data-ai-hint="company logo"
-            />
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
+            <div className="-mt-16">
+                <Image
+                  src={stall.logoUrl}
+                  alt={`${stall.name} logo`}
+                  width={128}
+                  height={128}
+                  className="h-32 w-32 rounded-full border-4 border-background bg-background object-cover"
+                  data-ai-hint="company logo"
+                />
+            </div>
             <div className="pb-4">
               <h1 className="font-headline text-4xl font-extrabold">{stall.name}</h1>
-              <div className="mt-1 flex items-center justify-center gap-2 text-muted-foreground md:justify-start">
+              <div className="mt-1 flex items-center gap-2 text-muted-foreground">
                 <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                 <span className="font-semibold">{stall.rating.toFixed(1)}</span>
                 <span>•</span>
