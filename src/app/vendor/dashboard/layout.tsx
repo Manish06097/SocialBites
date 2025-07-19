@@ -1,3 +1,4 @@
+
 'use client'
 
 import Link from 'next/link'
@@ -14,13 +15,6 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import VendorBottomNavBar from '@/components/VendorBottomNavBar'
 
@@ -71,14 +65,25 @@ export default function DashboardLayout({
             </nav>
           </div>
           <div className="mt-auto p-4">
-             <Button size="sm" variant="ghost" className="w-full justify-start">
-               <LogOut className="mr-2 h-4 w-4" />
-               Logout
+             <Button asChild size="sm" variant="ghost" className="w-full justify-start">
+              <Link href="/vendor/login">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Link>
              </Button>
           </div>
         </div>
       </div>
       <div className="flex flex-col">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 md:hidden">
+            <Link
+                href="#"
+                className="flex items-center gap-2 text-lg font-semibold"
+            >
+                <Package2 className="h-6 w-6 text-primary" />
+                <span>SSB Vendor</span>
+            </Link>
+        </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background pb-20 md:pb-6">
           {children}
         </main>

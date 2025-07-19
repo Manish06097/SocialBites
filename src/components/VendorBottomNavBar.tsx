@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -16,9 +17,11 @@ export default function VendorBottomNavBar() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
+    // Exact match for dashboard
     if (href === '/vendor/dashboard') {
       return pathname === href;
     }
+    // Starts with for others
     return pathname.startsWith(href);
   };
 
