@@ -18,7 +18,7 @@ export const stalls: Stall[] = [
       {
         title: "Locho Varieties",
         items: [
-          { id: "m1-1", name: "Butter Locho", description: "Classic steamed gram flour cake with a dollop of butter.", price: 80, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 500, customizations: [ { title: 'Spice Level', type: 'radio', options: [{ label: 'Mild', price_modifier: 0 }, { label: 'Medium', price_modifier: 0 }, { label: 'Spicy', price_modifier: 10 }] }, { title: 'Add-ons', type: 'checkbox', options: [{ label: 'Extra Cheese', price_modifier: 20 }, { label: 'Garlic Chutney', price_modifier: 15 }] }, { title: 'Special Instructions', type: 'text' } ] },
+          { id: "m1-1", name: "Butter Locho", description: "Classic steamed gram flour cake with a dollop of butter.", price: 80, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 500, customizations: [ { title: 'Spice Level', type: 'radio', options: [{ label: 'Mild', price_modifier: 0 }, { label: 'Medium', price_modifier: 0 }, { label: 'Spicy', price_modifier: 10 }] }, { title: 'Add-ons', type: 'checkbox', options: [{ label: 'Extra Cheese', price_modifier: 20 }, { label: 'Garlic Chutney', price_modifier: 15 }] } ] },
           { id: "m1-2", name: "Cheese Roll Locho", description: "Locho rolled with generous cheese filling.", price: 120, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350 },
         ],
       },

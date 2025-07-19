@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from './ui/separator';
 
 interface MenuItemDialogProps {
   item: MenuItem;
@@ -82,11 +83,15 @@ export function MenuItemDialog({ item, stall, open, onOpenChange }: MenuItemDial
                    ))}
                  </div>
               )}
-               {custom.type === 'text' && (
-                 <Textarea placeholder="e.g. extra spicy, no onions..." value={specialInstructions} onChange={(e) => setSpecialInstructions(e.target.value)} />
-              )}
             </div>
           ))}
+
+          <Separator />
+          
+          <div className="space-y-2">
+            <Label className="font-semibold">Special Instructions</Label>
+            <Textarea placeholder="e.g. extra spicy, no onions..." value={specialInstructions} onChange={(e) => setSpecialInstructions(e.target.value)} />
+          </div>
 
           <div className="flex items-center justify-between">
             <Label className="font-semibold">Quantity</Label>
