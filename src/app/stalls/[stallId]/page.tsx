@@ -40,24 +40,29 @@ export default function StallPage() {
                 className="bg-muted"
                 data-ai-hint="food stall"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             </div>
             <div className="container mx-auto px-4 md:px-6">
-                <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
+                <div className="relative z-10 -mt-16 flex items-end gap-4 md:-mt-20">
                      <Image
                         src={stall.logoUrl}
                         alt={`${stall.name} logo`}
                         width={96}
                         height={96}
-                        className="h-24 w-24 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
+                        className="h-20 w-20 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
                         data-ai-hint="company logo"
                       />
                     <div className="pb-2">
-                      <h1 className="font-headline text-3xl font-extrabold text-white [text-shadow:1px_1px_3px_#000000a0] md:text-4xl">{stall.name}</h1>
-                      <div className="mt-1 flex items-center gap-2 rounded-full bg-black/30 px-2 py-1 text-white backdrop-blur-sm">
-                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold">{stall.rating.toFixed(1)}</span>
-                        <span className='hidden sm:inline'>•</span>
-                        <span className='hidden sm:inline'>{stall.tags.join(', ')}</span>
+                      <h1 className="font-headline text-2xl font-extrabold text-white [text-shadow:1px_1px_3px_#000000a0] md:text-4xl">{stall.name}</h1>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white">
+                        <div className="flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 backdrop-blur-sm">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-semibold">{stall.rating.toFixed(1)}</span>
+                        </div>
+                        <div className="hidden items-center gap-2 sm:flex">
+                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline">{stall.tags.join(', ')}</span>
+                        </div>
                       </div>
                     </div>
                 </div>
@@ -67,11 +72,11 @@ export default function StallPage() {
 
       <div className="container mx-auto px-4 py-8 md:px-6">
         <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
-            {stall.tags.map(tag => <div key={tag} className="text-sm text-muted-foreground">{tag}</div>)}
+            {stall.tags.map(tag => <div key={tag} className="text-xs text-muted-foreground">#{tag}</div>)}
         </div>
         {stall.menu.map((category, index) => (
           <section key={index} className="mb-12">
-            <h2 className="font-headline text-3xl font-bold">{category.title}</h2>
+            <h2 className="font-headline text-2xl font-bold md:text-3xl">{category.title}</h2>
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {category.items.map((item) => (
                 <Card key={item.id} className="flex flex-col overflow-hidden">
@@ -81,7 +86,7 @@ export default function StallPage() {
                       alt={item.name}
                       width={400}
                       height={300}
-                      className="h-48 w-full object-cover"
+                      className="h-40 w-full object-cover md:h-48"
                       data-ai-hint="food item"
                     />
                   </div>
