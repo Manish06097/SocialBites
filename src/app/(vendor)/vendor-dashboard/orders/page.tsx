@@ -21,8 +21,20 @@ import { Separator } from '@/components/ui/separator'
 import { CheckCircle, XCircle, CookingPot, Bike } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
+type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed' | 'rejected';
+
+type Order = {
+    id: string;
+    customerName: string;
+    table: string;
+    status: OrderStatus;
+    items: { name: string; quantity: number }[];
+    total: number;
+    timestamp: Date;
+};
+
 // Mock data, in a real app this would come from a database in real-time
-const mockOrders = [
+const initialOrders: Order[] = [
   {
     id: 'SSB-54321',
     customerName: 'Aisha Sharma',
@@ -83,7 +95,7 @@ const mockOrders = [
 ];
 
 
-function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
+function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void; }) {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
 
@@ -148,24 +160,24 @@ function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
       <CardFooter className="py-3 px-4">
         {order.status === 'new' && (
             <div className="w-full flex gap-2">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')}>
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                 </Button>
-                <Button className="w-full">
+                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Accept
                 </Button>
             </div>
         )}
          {order.status === 'preparing' && (
-            <Button className="w-full">
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready')}>
                 <Bike className="mr-2 h-4 w-4" />
                 Mark as Ready
             </Button>
         )}
         {order.status === 'ready' && (
-             <Button className="w-full">
+             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'completed')}>
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Mark as Completed
             </Button>
@@ -182,11 +194,23 @@ function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
 }
 
 export default function VendorOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
 
-  const newOrders = mockOrders.filter(o => o.status === 'new');
-  const preparingOrders = mockOrders.filter(o => o.status === 'preparing');
-  const readyOrders = mockOrders.filter(o => o.status === 'ready');
-  const completedOrders = mockOrders.filter(o => o.status === 'completed');
+  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+    setOrders(currentOrders => {
+      if (newStatus === 'rejected') {
+        return currentOrders.filter(order => order.id !== orderId);
+      }
+      return currentOrders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      );
+    });
+  };
+
+  const newOrders = orders.filter(o => o.status === 'new');
+  const preparingOrders = orders.filter(o => o.status === 'preparing');
+  const readyOrders = orders.filter(o => o.status === 'ready');
+  const completedOrders = orders.filter(o => o.status === 'completed');
 
   return (
     <>
@@ -210,22 +234,22 @@ export default function VendorOrdersPage() {
         </TabsList>
         <TabsContent value="new" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {newOrders.length > 0 ? newOrders.map(order => <OrderCard key={order.id} order={order} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {newOrders.length > 0 ? newOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
         <TabsContent value="ready" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
+             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
           </div>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet.</p>}
+             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet.</p>}
           </div>
         </TabsContent>
       </Tabs>
