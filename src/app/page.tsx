@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { stalls, trendingItems } from '@/lib/data';
+import { stalls, trendingItems, foodCourts } from '@/lib/data';
 import type { Stall } from '@/lib/types';
 import StallCard from '@/components/StallCard';
 import { Input } from '@/components/ui/input';
@@ -30,10 +30,21 @@ function WelcomeMessage() {
   );
 }
 
-export default function Home() {
+function HomePageContent() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
-  const { selectedFoodCourt } = useFoodCourt();
+  const [selectedCuisine, setSelectedCuisine] = useState<string | null>('All');
+  const { selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const foodCourtId = searchParams.get('foodCourtId');
+    if (foodCourtId) {
+      const court = foodCourts.find(fc => fc.id === foodCourtId);
+      if (court) {
+        setSelectedFoodCourt(court);
+      }
+    }
+  }, [searchParams, setSelectedFoodCourt]);
 
   const stallsForCourt = useMemo(() => {
     return stalls.filter(stall => stall.foodCourtId === selectedFoodCourt.id);
@@ -56,9 +67,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8 md:px-6">
-      <Suspense fallback={<div>Loading welcome message...</div>}>
-        <WelcomeMessage />
-      </Suspense>
+      <WelcomeMessage />
 
       <section className="mb-12">
         <h1 className="text-center font-headline text-4xl font-extrabold tracking-tight lg:text-5xl">
@@ -82,7 +91,7 @@ export default function Home() {
             <Button
               key={cuisine}
               variant={selectedCuisine === cuisine ? 'default' : 'outline'}
-              onClick={() => setSelectedCuisine(cuisine)}
+              onClick={() => setSelectedCuisine(cuisine === 'All' ? null : cuisine)}
               className="rounded-full"
             >
               {cuisine}
@@ -133,4 +142,13 @@ export default function Home() {
       </section>
     </div>
   );
+}
+
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
+  )
 }
