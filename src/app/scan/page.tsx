@@ -27,8 +27,8 @@ export default function ScanPage() {
   };
 
   const handleLogin = () => {
-      // Redirect to a login page (using vendor login as a placeholder)
-      router.push(`/vendor/login?redirect=/?foodCourtId=${foodCourtId}&stallId=${stallId}&table=${tableId}`);
+      // Redirect to the new user login page
+      router.push(`/login?redirect=/?foodCourtId=${foodCourtId}&stallId=${stallId}&table=${tableId}`);
   }
 
   return (

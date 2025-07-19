@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -27,7 +28,7 @@ export default function RootLayout({
   const pathname = usePathname();
   
   // Define routes that should have a clean layout (no header/footer)
-  const cleanLayoutRoutes = ['/scan', '/vendor/login'];
+  const cleanLayoutRoutes = ['/scan', '/vendor/login', '/login'];
   const isCleanLayout = cleanLayoutRoutes.some(route => pathname.startsWith(route));
 
   if (isCleanLayout) {
