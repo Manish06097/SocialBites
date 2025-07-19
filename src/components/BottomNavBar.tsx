@@ -14,8 +14,7 @@ interface BottomNavBarProps {
 const navItems = [
   { href: '/', icon: Home, label: 'Stalls' },
   { href: '/orders/SSB-12345', icon: ClipboardList, label: 'My Order' },
-  // NOTE: A proper profile page doesn't exist yet, so this links home.
-  { href: '/', icon: User, label: 'Profile' }, 
+  { href: '/profile', icon: User, label: 'Profile' }, 
 ];
 
 export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
@@ -26,7 +25,7 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
       <div className="container mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around px-4">
         {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive = (pathname === href && href !== '/') || (pathname === '/' && label === 'Stalls');
+          const isActive = pathname.startsWith(href) && href !== '/' || (pathname === '/' && href === '/');
 
           return (
             <Link
