@@ -85,8 +85,15 @@ const mockOrders = [
 
 function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
   const [timeAgo, setTimeAgo] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const timeSince = (date: Date) => {
       const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
       if (seconds < 5) return "just now";
@@ -102,16 +109,15 @@ function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
       if (interval > 1) return Math.floor(interval) + " minutes ago";
       return Math.floor(seconds) + " seconds ago";
     }
+    
     setTimeAgo(timeSince(order.timestamp));
-
-    // Optional: update time every minute
     const intervalId = setInterval(() => {
         setTimeAgo(timeSince(order.timestamp));
     }, 60000);
 
     return () => clearInterval(intervalId);
 
-  }, [order.timestamp]);
+  }, [order.timestamp, isClient]);
 
 
   return (
@@ -124,7 +130,7 @@ function OrderCard({ order }: { order: (typeof mockOrders)[0] }) {
             </div>
             <div className="text-right">
                 <p className="font-bold text-lg">₹{order.total.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">{timeAgo || '...'}</p>
+                <p className="text-xs text-muted-foreground">{isClient ? timeAgo : '...'}</p>
             </div>
         </div>
       </CardHeader>
