@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, Bike } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useSound } from '@/hooks/use-sound';
 
 type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed';
 
@@ -120,7 +119,6 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [playNotification] = useSound('/notification.mp3');
 
   useEffect(() => {
     // This ensures this code only runs on the client, preventing hydration mismatch
@@ -186,26 +184,7 @@ export default function VendorOrdersPage() {
       },
     ];
     setOrders(initialOrders);
-
-    // Simulate new orders arriving
-    const interval = setInterval(() => {
-        const newOrderId = `SSB-${Math.floor(Math.random() * 90000) + 10000}`;
-        const newOrder: Order = {
-            id: newOrderId,
-            customerName: "New Customer",
-            table: `T${Math.floor(Math.random() * 20)}`,
-            status: 'new',
-            items: [{ name: 'Butter Locho', quantity: 1 }],
-            total: 80,
-            timestamp: new Date(),
-        };
-        setOrders(prevOrders => [newOrder, ...prevOrders]);
-        playNotification();
-    }, 15000); // Every 15 seconds
-
-    return () => clearInterval(interval); // Cleanup on unmount
-
-  }, [playNotification]);
+  }, []);
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     setOrders(prevOrders =>
@@ -288,3 +267,5 @@ export default function VendorOrdersPage() {
     </>
   )
 }
+
+    
