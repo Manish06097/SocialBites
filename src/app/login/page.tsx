@@ -17,13 +17,13 @@ export default function UserLoginPage() {
       <Card className="mx-auto w-full max-w-sm">
         <CardHeader className="text-center">
           <Logo className="mb-4" />
-          <CardTitle className="font-headline text-2xl">Login or Sign Up</CardTitle>
-          <CardDescription>Enter your details to get started.</CardDescription>
+          <CardTitle className="font-headline text-2xl">Login</CardTitle>
+          <CardDescription>Enter your email below to login to your account.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email or Phone</Label>
+              <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="m@example.com" required />
             </div>
             <div className="space-y-2">
@@ -31,14 +31,14 @@ export default function UserLoginPage() {
               <Input id="password" type="password" required />
             </div>
             <Button type="submit" className="w-full font-bold">
-               <Link href={successfulLoginRedirectPath}>Continue</Link>
+               <Link href={successfulLoginRedirectPath}>Login</Link>
             </Button>
              <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">Or</span>
                 </div>
             </div>
              <Button variant="outline" className="w-full font-bold">
@@ -49,6 +49,12 @@ export default function UserLoginPage() {
             </Button>
           </div>
            <div className="mt-4 text-center text-sm">
+            Don't have an account?{' '}
+            <Link href="/signup" className="underline">
+              Sign up
+            </Link>
+          </div>
+           <div className="mt-2 text-center text-sm">
             Are you a vendor?{' '}
             <Link href="/vendor/login" className="underline">
               Vendor Login
