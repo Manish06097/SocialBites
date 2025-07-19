@@ -33,68 +33,6 @@ type Order = {
     timestamp: Date;
 };
 
-// Mock data, in a real app this would come from a database in real-time
-const initialOrders: Order[] = [
-  {
-    id: 'SSB-54321',
-    customerName: 'Aisha Sharma',
-    table: 'T05',
-    status: 'new',
-    items: [
-      { name: 'Butter Locho', quantity: 2 },
-      { name: 'Khaman', quantity: 1 },
-    ],
-    total: 220,
-    timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
-  },
-  {
-    id: 'SSB-54322',
-    customerName: 'Vikram Singh',
-    table: 'T02',
-    status: 'preparing',
-    items: [
-      { name: 'Cheese Roll Locho', quantity: 1 },
-    ],
-    total: 120,
-    timestamp: new Date(Date.now() - 5 * 60 * 1000),
-  },
-    {
-    id: 'SSB-54323',
-    customerName: 'Priya Mehta',
-    table: 'T08',
-    status: 'new',
-    items: [
-      { name: 'Butter Locho', quantity: 1 },
-    ],
-    total: 80,
-    timestamp: new Date(Date.now() - 1 * 60 * 1000),
-  },
-  {
-    id: 'SSB-54324',
-    customerName: 'Karan Desai',
-    table: 'T01',
-    status: 'ready',
-    items: [
-      { name: 'Khaman', quantity: 3 },
-    ],
-    total: 180,
-    timestamp: new Date(Date.now() - 10 * 60 * 1000),
-  },
-  {
-    id: 'SSB-54325',
-    customerName: 'Sneha Patel',
-    table: 'T11',
-    status: 'completed',
-    items: [
-      { name: 'Butter Locho', quantity: 1 },
-      { name: 'Cheese Roll Locho', quantity: 1 },
-    ],
-    total: 200,
-    timestamp: new Date(Date.now() - 30 * 60 * 1000),
-  },
-];
-
-
 function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void; }) {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
@@ -194,7 +132,71 @@ function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
 }
 
 export default function VendorOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  
+  useEffect(() => {
+    // In a real app this would come from a database in real-time
+    const initialOrders: Order[] = [
+      {
+        id: 'SSB-54321',
+        customerName: 'Aisha Sharma',
+        table: 'T05',
+        status: 'new',
+        items: [
+          { name: 'Butter Locho', quantity: 2 },
+          { name: 'Khaman', quantity: 1 },
+        ],
+        total: 220,
+        timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+      },
+      {
+        id: 'SSB-54322',
+        customerName: 'Vikram Singh',
+        table: 'T02',
+        status: 'preparing',
+        items: [
+          { name: 'Cheese Roll Locho', quantity: 1 },
+        ],
+        total: 120,
+        timestamp: new Date(Date.now() - 5 * 60 * 1000),
+      },
+        {
+        id: 'SSB-54323',
+        customerName: 'Priya Mehta',
+        table: 'T08',
+        status: 'new',
+        items: [
+          { name: 'Butter Locho', quantity: 1 },
+        ],
+        total: 80,
+        timestamp: new Date(Date.now() - 1 * 60 * 1000),
+      },
+      {
+        id: 'SSB-54324',
+        customerName: 'Karan Desai',
+        table: 'T01',
+        status: 'ready',
+        items: [
+          { name: 'Khaman', quantity: 3 },
+        ],
+        total: 180,
+        timestamp: new Date(Date.now() - 10 * 60 * 1000),
+      },
+      {
+        id: 'SSB-54325',
+        customerName: 'Sneha Patel',
+        table: 'T11',
+        status: 'completed',
+        items: [
+          { name: 'Butter Locho', quantity: 1 },
+          { name: 'Cheese Roll Locho', quantity: 1 },
+        ],
+        total: 200,
+        timestamp: new Date(Date.now() - 30 * 60 * 1000),
+      },
+    ];
+    setOrders(initialOrders);
+  }, []);
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     setOrders(currentOrders => {
