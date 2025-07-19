@@ -20,11 +20,11 @@ export default function BottomNavBar() {
       <div className="container mx-auto flex h-16 max-w-md items-center justify-around px-4">
         {navItems.map(({ href, icon: Icon, label }) => {
           // A more robust check might be needed if you have nested routes
-          const isActive = pathname === href;
+          const isActive = pathname === href && label !== 'Profile'; // Prevent profile from being active on home
 
           return (
             <Link
-              key={href}
+              key={label}
               href={href}
               className={cn(
                 'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary',
