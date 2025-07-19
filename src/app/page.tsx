@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { stalls, trendingItems, foodCourts } from '@/lib/data';
 import type { Stall } from '@/lib/types';
 import StallCard from '@/components/StallCard';
@@ -12,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function WelcomeMessage() {
   const [table, setTable] = useState<string | null>(null);
@@ -41,6 +43,8 @@ function WelcomeMessage() {
 }
 
 function HomePageContent() {
+  const router = useRouter();
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>('All');
   const { selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
@@ -56,11 +60,18 @@ function HomePageContent() {
                     setSelectedFoodCourt(court);
                 }
             }
+        } else {
+             // If no session, redirect to scan page
+            router.replace('/scan');
+            return;
         }
     } catch(error) {
         console.error("Could not read food court from guest session", error);
+        router.replace('/scan');
+        return;
     }
-  }, [selectedFoodCourt.id, setSelectedFoodCourt]);
+    setSessionChecked(true);
+  }, [selectedFoodCourt.id, setSelectedFoodCourt, router]);
 
   const stallsForCourt = useMemo(() => {
     return stalls.filter(stall => stall.foodCourtId === selectedFoodCourt.id);
@@ -80,6 +91,21 @@ function HomePageContent() {
       return matchesSearch && matchesCuisine;
     });
   }, [searchTerm, selectedCuisine, stallsForCourt]);
+
+  if (!sessionChecked) {
+    return (
+        <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-40 w-full" />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 md:px-6">
@@ -163,7 +189,7 @@ function HomePageContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense>
       <HomePageContent />
     </Suspense>
   )
