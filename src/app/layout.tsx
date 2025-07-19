@@ -49,7 +49,7 @@ export default function RootLayout({
 
   if (isCleanLayout) {
     return (
-       <html lang="en" className="scroll-smooth">
+       <html lang="en" className="scroll-smooth" suppressHydrationWarning={true}>
          <body className="font-body antialiased">
             {children}
             <Toaster />
@@ -59,7 +59,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning={true}>
       <head>
         <title>Surat Social Bites</title>
         <meta name="description" content="Order from the best food stalls in Surat!" />
