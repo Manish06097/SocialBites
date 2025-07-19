@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
@@ -22,6 +24,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const pathname = usePathname();
+  
+  // Define routes that should have a clean layout (no header/footer)
+  const cleanLayoutRoutes = ['/scan', '/vendor/login'];
+  const isCleanLayout = cleanLayoutRoutes.some(route => pathname.startsWith(route));
+
+  if (isCleanLayout) {
+    return (
+       <html lang="en" className="scroll-smooth">
+         <body className="font-body antialiased">
+            {children}
+            <Toaster />
+         </body>
+       </html>
+    )
+  }
 
   return (
     <html lang="en" className="scroll-smooth">
