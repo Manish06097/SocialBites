@@ -45,6 +45,7 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
       const hours = Math.floor(minutes / 60);
       return `${hours} hour${hours > 1 ? 's' : ''} ago`;
     };
+    
     setTimeAgo(calculateTimeSince());
     const interval = setInterval(() => {
         setTimeAgo(calculateTimeSince());
@@ -119,7 +120,7 @@ export default function VendorOrdersPage() {
 
   useEffect(() => {
     // This ensures this code only runs on the client, preventing hydration mismatch
-    setIsClient(true);
+    // by ensuring mock data (with dynamic timestamps) is only created client-side.
     const mockOrders: Order[] = [
       {
         id: 'SSB-54321',
@@ -144,7 +145,7 @@ export default function VendorOrdersPage() {
         total: 120,
         timestamp: new Date(Date.now() - 5 * 60 * 1000),
       },
-        {
+      {
         id: 'SSB-54323',
         customerName: 'Priya Mehta',
         table: 'T08',
@@ -180,6 +181,7 @@ export default function VendorOrdersPage() {
       },
     ];
     setOrders(mockOrders);
+    setIsClient(true);
   }, []);
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
@@ -217,7 +219,7 @@ export default function VendorOrdersPage() {
         </h1>
       </div>
       <Tabs defaultValue="new" className="mt-4">
-        <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-flex">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
           <TabsTrigger value="new">
             New <Badge variant="destructive" className="ml-2">{newOrders.length}</Badge>
           </TabsTrigger>
