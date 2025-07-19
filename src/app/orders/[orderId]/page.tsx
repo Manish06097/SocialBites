@@ -6,6 +6,8 @@ import { CheckCircle, ChefHat, Bike, PartyPopper } from 'lucide-react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import type { CartItem } from '@/lib/types';
 
 // Mock data for a single order, replace with actual data fetching
 const mockOrder = {
@@ -54,35 +56,24 @@ const mockOrder = {
   },
 };
 
-const statusInfo = {
-  Accepted: { icon: CheckCircle, text: 'Order Accepted', color: 'text-green-500' },
-  Preparing: { icon: ChefHat, text: 'Preparing your food', color: 'text-orange-500' },
-  'On the Way': { icon: Bike, text: 'On its way!', color: 'text-blue-500' },
-  Delivered: { icon: PartyPopper, text: 'Delivered & Delicious', color: 'text-primary' },
+type OrderStatus = 'Accepted' | 'Preparing' | 'On the Way' | 'Delivered' | 'Rejected';
+
+const statusDisplayConfig: Record<OrderStatus, { text: string; className: string }> = {
+  Accepted: { text: 'Accepted', className: 'bg-blue-100 text-blue-800' },
+  Preparing: { text: 'Preparing', className: 'bg-orange-100 text-orange-800' },
+  'On the Way': { text: 'On the Way', className: 'bg-yellow-100 text-yellow-800' },
+  Delivered: { text: 'Delivered', className: 'bg-green-100 text-green-800' },
+  Rejected: { text: 'Rejected', className: 'bg-red-100 text-red-800' },
 };
 
-const OrderStatusTimeline = ({ status }: { status: keyof typeof statusInfo }) => {
-    const statuses = Object.keys(statusInfo) as (keyof typeof statusInfo)[];
-    const currentIndex = statuses.indexOf(status);
-
-    return (
-        <div className="flex items-center space-x-2 sm:space-x-4">
-            {statuses.map((s, index) => {
-                const isActive = index <= currentIndex;
-                const { icon: Icon, text, color } = statusInfo[s];
-                return (
-                    <div key={s} className="flex flex-col items-center">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-primary/20' : 'bg-muted'}`}>
-                           <Icon className={`h-6 w-6 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                        </div>
-                        <p className={`mt-2 text-xs text-center ${isActive ? 'font-semibold' : 'text-muted-foreground'}`}>{text}</p>
-                    </div>
-                );
-            })}
-        </div>
-    );
+// A helper to determine the overall status for a stall's items
+const getStallOverallStatus = (items: (CartItem & { status: OrderStatus })[]): OrderStatus => {
+  const statuses = items.map(item => item.status);
+  if (statuses.every(s => s === 'Delivered')) return 'Delivered';
+  if (statuses.some(s => s === 'Preparing')) return 'Preparing';
+  if (statuses.some(s => s === 'Accepted')) return 'Accepted';
+  return statuses[0] || 'Accepted'; // Fallback
 };
-
 
 export default function OrderTrackingPage() {
   const params = useParams();
@@ -103,33 +94,37 @@ export default function OrderTrackingPage() {
         </CardHeader>
         <CardContent className="space-y-2">
            <Accordion type="multiple" className="w-full">
-            {Object.entries(order.itemsByStall).map(([stallId, data]) => (
-                <AccordionItem value={stallId} key={stallId}>
-                    <AccordionTrigger className="font-headline text-2xl font-semibold hover:no-underline">
-                        {data.stallName}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        {data.items.map(item => (
-                            <div key={item.id} className="mt-4 space-y-4 rounded-lg border p-4">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Image src={item.menuItem.imageUrl} alt={item.menuItem.name} width={64} height={64} className="rounded-md" data-ai-hint="food item" />
-                                        <div>
-                                            <p className="font-semibold">{item.menuItem.name}</p>
-                                            <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                                        </div>
-                                    </div>
-                                    <p className="font-bold">₹{item.totalPrice.toFixed(2)}</p>
-                                </div>
-                                <Separator/>
-                                <div className="overflow-x-auto pb-2">
-                                <OrderStatusTimeline status={item.status as keyof typeof statusInfo} />
-                                </div>
+            {Object.entries(order.itemsByStall).map(([stallId, data]) => {
+                const overallStatus = getStallOverallStatus(data.items as any);
+                const statusConfig = statusDisplayConfig[overallStatus];
+
+                return (
+                    <AccordionItem value={stallId} key={stallId}>
+                        <AccordionTrigger className="font-headline text-2xl font-semibold hover:no-underline">
+                            <div className="flex items-center gap-4">
+                                <span>{data.stallName}</span>
+                                <Badge className={`border-transparent text-xs font-bold ${statusConfig.className}`}>{statusConfig.text}</Badge>
                             </div>
-                        ))}
-                    </AccordionContent>
-                </AccordionItem>
-            ))}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            {data.items.map(item => (
+                                <div key={item.id} className="mt-4 space-y-4 rounded-lg border p-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <Image src={item.menuItem.imageUrl} alt={item.menuItem.name} width={64} height={64} className="rounded-md" data-ai-hint="food item" />
+                                            <div>
+                                                <p className="font-semibold">{item.menuItem.name}</p>
+                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                                            </div>
+                                        </div>
+                                        <p className="font-bold">₹{item.totalPrice.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </AccordionContent>
+                    </AccordionItem>
+                )
+            })}
            </Accordion>
         </CardContent>
       </Card>
