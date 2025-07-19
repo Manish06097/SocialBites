@@ -1,3 +1,130 @@
+'use client';
+
+import { useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { stalls, trendingItems } from '@/lib/data';
+import type { Stall } from '@/lib/types';
+import StallCard from '@/components/StallCard';
+import { Input } from '@/components/ui/input';
+import { Search, UtensilsCrossed } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Image from 'next/image';
+import Link from 'next/link';
+
+function WelcomeMessage() {
+  const searchParams = useSearchParams();
+  const table = searchParams.get('table');
+
+  if (!table) return null;
+
+  return (
+    <div className="mb-8 rounded-lg border border-primary/20 bg-primary/10 p-4 text-center">
+      <h2 className="font-headline text-2xl font-bold text-primary">
+        Welcome to Surat Social Bites!
+      </h2>
+      <p className="text-foreground">You're at Table <span className="font-bold">{table}</span>. Ready for a feast?</p>
+    </div>
+  );
+}
+
 export default function Home() {
-  return <></>;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+
+  const allCuisines = useMemo(() => {
+    const cuisines = new Set<string>();
+    stalls.forEach(stall => stall.tags.forEach(tag => cuisines.add(tag)));
+    return ['All', ...Array.from(cuisines)];
+  }, []);
+
+  const filteredStalls = useMemo(() => {
+    return stalls.filter(stall => {
+      const matchesSearch = stall.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            stall.menu.some(cat => cat.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase())));
+      const matchesCuisine = !selectedCuisine || selectedCuisine === 'All' || stall.tags.includes(selectedCuisine);
+      return matchesSearch && matchesCuisine;
+    });
+  }, [searchTerm, selectedCuisine]);
+
+  return (
+    <div className="container mx-auto px-4 py-8 md:px-6">
+      <Suspense fallback={<div>Loading welcome message...</div>}>
+        <WelcomeMessage />
+      </Suspense>
+
+      <section className="mb-12">
+        <h1 className="text-center font-headline text-4xl font-extrabold tracking-tight lg:text-5xl">
+          Your Next <span className="text-primary">Food Adventure</span> Awaits
+        </h1>
+        <p className="mt-4 text-center text-lg text-muted-foreground">
+          Find your craving, from spicy street food to cheesy pizzas, all in one place.
+        </p>
+        <div className="relative mx-auto mt-8 max-w-2xl">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search for stalls or dishes..."
+            className="w-full rounded-full bg-card py-6 pl-12 pr-4 text-lg"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {allCuisines.map(cuisine => (
+            <Button
+              key={cuisine}
+              variant={selectedCuisine === cuisine ? 'default' : 'outline'}
+              onClick={() => setSelectedCuisine(cuisine)}
+              className="rounded-full"
+            >
+              {cuisine}
+            </Button>
+          ))}
+        </div>
+      </section>
+      
+      <section className="mb-12">
+        <h2 className="font-headline text-3xl font-bold">What's Trending 🔥</h2>
+        <Carousel opts={{ align: "start", loop: true }} className="mt-6 w-full">
+          <CarouselContent>
+            {trendingItems.map((item) => (
+              <CarouselItem key={item.id} className="md:basis-1/2 lg:basis-1/3">
+                <Card className="overflow-hidden">
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <Image src={item.imageUrl} alt={item.name} width={80} height={80} className="h-20 w-20 rounded-md object-cover" data-ai-hint="food item" />
+                    <div className="flex-grow">
+                      <h4 className="font-semibold truncate">{item.name}</h4>
+                      <p className="text-sm text-muted-foreground">{item.stallName}</p>
+                      <p className="font-bold text-primary">₹{item.price}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="hidden sm:flex" />
+          <CarouselNext className="hidden sm:flex" />
+        </Carousel>
+      </section>
+
+      <section>
+        <h2 className="font-headline text-3xl font-bold">All Stalls</h2>
+        {filteredStalls.length > 0 ? (
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredStalls.map((stall: Stall) => (
+              <StallCard key={stall.id} stall={stall} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-16 flex flex-col items-center justify-center text-center">
+             <UtensilsCrossed className="h-16 w-16 text-muted-foreground" />
+             <h3 className="mt-4 font-headline text-2xl font-bold">No Stalls Found</h3>
+             <p className="mt-2 text-muted-foreground">Looks like we couldn't find a match. Try a different search or filter!</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }

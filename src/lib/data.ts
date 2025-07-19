@@ -1,0 +1,124 @@
+import type { Stall, TrendingItem } from './types';
+
+export const stalls: Stall[] = [
+  {
+    id: 's1',
+    name: "Gopal Locho",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.8,
+    tags: ["Gujarati", "Snacks", "Street Food"],
+    menu: [
+      {
+        title: "Locho Varieties",
+        items: [
+          { id: "m1-1", name: "Butter Locho", description: "Classic steamed gram flour cake with a dollop of butter.", price: 80, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 500, customizations: [ { title: 'Spice Level', type: 'radio', options: [{ label: 'Mild', price_modifier: 0 }, { label: 'Medium', price_modifier: 0 }, { label: 'Spicy', price_modifier: 10 }] }, { title: 'Add-ons', type: 'checkbox', options: [{ label: 'Extra Cheese', price_modifier: 20 }, { label: 'Garlic Chutney', price_modifier: 15 }] }, { title: 'Special Instructions', type: 'text' } ] },
+          { id: "m1-2", name: "Cheese Roll Locho", description: "Locho rolled with generous cheese filling.", price: 120, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350 },
+        ],
+      },
+      {
+        title: "Other Delicacies",
+        items: [
+          { id: "m1-3", name: "Khaman", description: "Soft and spongy steamed gram flour snack.", price: 60, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 400 },
+        ],
+      }
+    ],
+  },
+  {
+    id: 's2',
+    name: "La Pino'z Pizza",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.5,
+    tags: ["Pizza", "Italian", "Fast Food"],
+    menu: [
+        {
+            title: "Signature Pizzas",
+            items: [
+                { id: "m2-1", name: "Margherita Pizza", description: "The classic with fresh mozzarella and basil.", price: 250, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 800, customizations: [ { title: 'Crust Type', type: 'radio', options: [{ label: 'Classic Hand-Tossed', price_modifier: 0 }, { label: 'Cheese Burst', price_modifier: 80 }, { label: 'Thin Crust', price_modifier: 20 }] }, { title: 'Extra Toppings', type: 'checkbox', options: [{ label: 'Olives', price_modifier: 40 }, { label: 'Mushrooms', price_modifier: 40 }] } ] },
+                { id: "m2-2", name: "Farmhouse Pizza", description: "Loaded with fresh veggies like onions, capsicum, tomatoes.", price: 350, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 950 },
+            ],
+        },
+        {
+            title: "Sides",
+            items: [
+                { id: "m2-3", name: "Garlic Breadsticks", description: "Warm, soft breadsticks with a garlic butter glaze.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1200 },
+                { id: "m2-4", name: "Choco Lava Cake", description: "A decadent chocolate cake with a molten center.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1500 },
+            ],
+        },
+    ]
+  },
+  {
+    id: 's3',
+    name: "Wok on Fire",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.6,
+    tags: ["Chinese", "Asian", "Noodles"],
+    menu: [
+        {
+            title: "Starters",
+            items: [
+                { id: "m3-1", name: "Manchurian Dry", description: "Crispy vegetable balls tossed in a tangy sauce.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 600 },
+            ],
+        },
+        {
+            title: "Main Course",
+            items: [
+                { id: "m3-2", name: "Hakka Noodles", description: "Stir-fried noodles with mixed vegetables.", price: 220, imageUrl: "https://placehold.co/400x300.png", rating: 4.5, orders: 700, customizations: [ { title: 'Variant', type: 'radio', options: [{ label: 'Veg', price_modifier: 0 }, { label: 'Egg', price_modifier: 30 }, { label: 'Chicken', price_modifier: 60 }] } ] },
+                { id: "m3-3", name: "Schezwan Fried Rice", description: "Spicy fried rice with a bold Schezwan flavor.", price: 240, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 650 },
+            ],
+        }
+    ]
+  },
+  {
+    id: 's4',
+    name: "Dangee Dums",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.9,
+    tags: ["Dessert", "Cakes", "Bakery"],
+    menu: [
+        {
+            title: "Pastries & Cakes",
+            items: [
+                { id: "m4-1", name: "Dutch Truffle Pastry", description: "Rich, dense, and gooey chocolate truffle pastry.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 2000 },
+                { id: "m4-2", name: "Red Velvet Cake (500g)", description: "Classic red velvet cake with cream cheese frosting.", price: 600, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 400 },
+            ],
+        },
+        {
+            title: "Beverages",
+            items: [
+                { id: "m4-3", name: "Cold Coffee", description: "Thick and creamy cold coffee shake.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 800 },
+            ],
+        }
+    ]
+  },
+];
+
+
+export const getStallById = (id: string): Stall | undefined => {
+    return stalls.find(stall => stall.id === id);
+}
+
+export const getMenuItem = (stallId: string, itemId: string) => {
+    const stall = getStallById(stallId);
+    if (!stall) return { stall: undefined, item: undefined };
+    
+    for (const category of stall.menu) {
+        const item = category.items.find(item => item.id === itemId);
+        if (item) {
+            return { stall, item };
+        }
+    }
+    return { stall, item: undefined };
+}
+
+
+export const trendingItems: TrendingItem[] = [
+    {id: "t1", name: "Garlic Breadsticks", stallName: "La Pino'z Pizza", imageUrl: "https://placehold.co/400x300.png", price: 150 },
+    {id: "t2", name: "Dutch Truffle Pastry", stallName: "Dangee Dums", imageUrl: "https://placehold.co/400x300.png", price: 150 },
+    {id: "t3", name: "Butter Locho", stallName: "Gopal Locho", imageUrl: "https://placehold.co/400x300.png", price: 80 },
+    {id: "t4", name: "Farmhouse Pizza", stallName: "La Pino'z Pizza", imageUrl: "https://placehold.co/400x300.png", price: 350 },
+    {id: "t5", name: "Hakka Noodles", stallName: "Wok on Fire", imageUrl: "https://placehold.co/400x300.png", price: 220 },
+];
