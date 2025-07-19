@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ChefHat, Bike, PartyPopper } from 'lucide-react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Mock data for a single order, replace with actual data fetching
 const mockOrder = {
@@ -100,31 +101,36 @@ export default function OrderTrackingPage() {
             Order ID: <span className="font-mono font-semibold text-primary">{order.id}</span>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          {Object.entries(order.itemsByStall).map(([stallId, data]) => (
-            <div key={stallId}>
-              <h3 className="font-headline text-2xl font-semibold">{data.stallName}</h3>
-              <Separator className="my-2" />
-              {data.items.map(item => (
-                <div key={item.id} className="mt-4 space-y-4 rounded-lg border p-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <Image src={item.menuItem.imageUrl} alt={item.menuItem.name} width={64} height={64} className="rounded-md" data-ai-hint="food item" />
-                            <div>
-                                <p className="font-semibold">{item.menuItem.name}</p>
-                                <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+        <CardContent className="space-y-2">
+           <Accordion type="multiple" className="w-full">
+            {Object.entries(order.itemsByStall).map(([stallId, data]) => (
+                <AccordionItem value={stallId} key={stallId}>
+                    <AccordionTrigger className="font-headline text-2xl font-semibold hover:no-underline">
+                        {data.stallName}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        {data.items.map(item => (
+                            <div key={item.id} className="mt-4 space-y-4 rounded-lg border p-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <Image src={item.menuItem.imageUrl} alt={item.menuItem.name} width={64} height={64} className="rounded-md" data-ai-hint="food item" />
+                                        <div>
+                                            <p className="font-semibold">{item.menuItem.name}</p>
+                                            <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                                        </div>
+                                    </div>
+                                    <p className="font-bold">₹{item.totalPrice.toFixed(2)}</p>
+                                </div>
+                                <Separator/>
+                                <div className="overflow-x-auto pb-2">
+                                <OrderStatusTimeline status={item.status as keyof typeof statusInfo} />
+                                </div>
                             </div>
-                        </div>
-                        <p className="font-bold">₹{item.totalPrice.toFixed(2)}</p>
-                    </div>
-                    <Separator/>
-                    <div className="overflow-x-auto pb-2">
-                       <OrderStatusTimeline status={item.status} />
-                    </div>
-                </div>
-              ))}
-            </div>
-          ))}
+                        ))}
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+           </Accordion>
         </CardContent>
       </Card>
     </div>
