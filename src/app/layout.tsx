@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { Metadata } from 'next';
 import './globals.css';
@@ -26,9 +26,25 @@ export default function RootLayout({
 }>) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    // Check for expired guest session on component mount
+    try {
+      const guestSessionStr = localStorage.getItem('guestSession');
+      if (guestSessionStr) {
+        const guestSession = JSON.parse(guestSessionStr);
+        if (new Date().getTime() > guestSession.expiry) {
+          localStorage.removeItem('guestSession');
+          console.log('Expired guest session cleared.');
+        }
+      }
+    } catch (error) {
+      console.error("Could not process guest session from localStorage", error);
+    }
+  }, []);
   
   // Define routes that should have a clean layout (no header/footer)
-  const cleanLayoutRoutes = ['/scan', '/vendor/login', '/login'];
+  const cleanLayoutRoutes = ['/scan', '/vendor/login', '/login', '/signup', '/welcome'];
   const isCleanLayout = cleanLayoutRoutes.some(route => pathname.startsWith(route));
 
   if (isCleanLayout) {
