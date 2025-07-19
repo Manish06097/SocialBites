@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import VendorBottomNavBar from '@/components/VendorBottomNavBar'
 
 const navItems = [
     { href: '/vendor/dashboard', icon: Home, label: 'Dashboard' },
@@ -78,9 +79,10 @@ export default function DashboardLayout({
         </div>
       </div>
       <div className="flex flex-col">
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background pb-20 md:pb-6">
           {children}
         </main>
+        <VendorBottomNavBar />
       </div>
     </div>
   )
