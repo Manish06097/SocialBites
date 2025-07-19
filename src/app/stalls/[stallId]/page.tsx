@@ -42,14 +42,14 @@ export default function StallPage() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             </div>
-            <div className="container mx-auto px-4 md:px-6">
-                <div className="relative z-10 -mt-16 flex items-end gap-4 md:-mt-20">
+             <div className="container relative mx-auto px-4 md:px-6">
+                <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
                      <Image
                         src={stall.logoUrl}
                         alt={`${stall.name} logo`}
                         width={96}
                         height={96}
-                        className="h-20 w-20 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
+                        className="h-24 w-24 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
                         data-ai-hint="company logo"
                       />
                     <div className="pb-2">
@@ -120,7 +120,7 @@ export default function StallPage() {
       {selectedItem && (
         <MenuItemDialog 
             item={selectedItem} 
-            stall={{id: stall.id, name: stall.name}} 
+            stall={{id: stall.id, name: stall.name, foodCourtId: stall.foodCourtId}} 
             open={!!selectedItem} 
             onOpenChange={(open) => !open && setSelectedItem(null)}
         />

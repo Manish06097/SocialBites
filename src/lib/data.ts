@@ -1,12 +1,13 @@
-import type { Stall, TrendingItem } from './types';
+import type { Stall, TrendingItem, FoodCourt } from './types';
 
-export const foodCourts = [
+export const foodCourts: FoodCourt[] = [
   { id: 'fc1', name: 'Vesu Food Plaza' },
   { id: 'fc2', name: 'Piplod Food Fest' },
   { id: 'fc3', name: 'Adajan Eateria' },
 ];
 
 export const stalls: Stall[] = [
+  // Food Court 1: Vesu Food Plaza
   {
     id: 's1',
     name: "Gopal Locho",
@@ -14,6 +15,7 @@ export const stalls: Stall[] = [
     bannerUrl: "https://images.unsplash.com/photo-1713699860139-1fa847f155b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxmb29kJTIwc3RhbGx8ZW58MHx8fHwxNzUyODk2OTI2fDA&ixlib=rb-4.1.0&q=80&w=1080",
     rating: 4.8,
     tags: ["Gujarati", "Snacks", "Street Food"],
+    foodCourtId: "fc1",
     menu: [
       {
         title: "Locho Varieties",
@@ -37,6 +39,7 @@ export const stalls: Stall[] = [
     bannerUrl: "https://placehold.co/600x300.png",
     rating: 4.5,
     tags: ["Pizza", "Italian", "Fast Food"],
+    foodCourtId: "fc1",
     menu: [
         {
             title: "Signature Pizzas",
@@ -54,6 +57,7 @@ export const stalls: Stall[] = [
         },
     ]
   },
+  // Food Court 2: Piplod Food Fest
   {
     id: 's3',
     name: "Wok on Fire",
@@ -61,6 +65,7 @@ export const stalls: Stall[] = [
     bannerUrl: "https://placehold.co/600x300.png",
     rating: 4.6,
     tags: ["Chinese", "Asian", "Noodles"],
+    foodCourtId: "fc2",
     menu: [
         {
             title: "Starters",
@@ -84,6 +89,7 @@ export const stalls: Stall[] = [
     bannerUrl: "https://placehold.co/600x300.png",
     rating: 4.9,
     tags: ["Dessert", "Cakes", "Bakery"],
+    foodCourtId: "fc2",
     menu: [
         {
             title: "Pastries & Cakes",
@@ -96,6 +102,55 @@ export const stalls: Stall[] = [
             title: "Beverages",
             items: [
                 { id: "m4-3", name: "Cold Coffee", description: "Thick and creamy cold coffee shake.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 800 },
+            ],
+        }
+    ]
+  },
+  // Food Court 3: Adajan Eateria
+  {
+    id: 's5',
+    name: "Sizzling Salsa",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.7,
+    tags: ["Mexican", "Sizzlers", "Tex-Mex"],
+    foodCourtId: "fc3",
+    menu: [
+        {
+            title: "Sizzlers",
+            items: [
+                { id: "m5-1", name: "Veg Sizzler", description: "Assorted veggies, patty, and noodles on a hot plate.", price: 450, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 500 },
+                { id: "m5-2", name: "Paneer Shashlik Sizzler", description: "Marinated paneer skewers with sizzling veggies.", price: 550, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350 },
+            ],
+        },
+        {
+            title: "Mexican",
+            items: [
+                { id: "m5-3", name: "Cheesy Nachos", description: "Crispy nachos topped with cheese sauce and salsa.", price: 220, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 800 },
+            ],
+        }
+    ]
+  },
+  {
+    id: 's6',
+    name: "Juice Junction",
+    logoUrl: "https://placehold.co/100x100.png",
+    bannerUrl: "https://placehold.co/600x300.png",
+    rating: 4.8,
+    tags: ["Juices", "Shakes", "Healthy"],
+    foodCourtId: "fc3",
+    menu: [
+        {
+            title: "Fresh Juices",
+            items: [
+                { id: "m6-1", name: "Watermelon Juice", description: "Refreshing and hydrating freshly squeezed juice.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1200 },
+                { id: "m6-2", name: "Mixed Fruit Juice", description: "A blend of seasonal fruits for a vitamin boost.", price: 140, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 900 },
+            ],
+        },
+        {
+            title: "Milkshakes",
+            items: [
+                { id: "m6-3", name: "Oreo Shake", description: "A classic blend of Oreo cookies and ice cream.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1500 },
             ],
         }
     ]

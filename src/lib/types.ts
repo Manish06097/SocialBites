@@ -6,6 +6,7 @@ export interface Stall {
   rating: number;
   tags: string[];
   menu: MenuCategory[];
+  foodCourtId: string;
 }
 
 export interface MenuCategory {
@@ -33,7 +34,7 @@ export interface Customization {
 export interface CartItem {
   id: string; // combination of menuItemId and customizations
   menuItem: MenuItem;
-  stall: Pick<Stall, 'id' | 'name'>;
+  stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>;
   quantity: number;
   customizationChoices?: { [title: string]: string | string[] };
   specialInstructions?: string;
@@ -61,4 +62,9 @@ export interface Order {
   };
   totalAmount: number;
   orderDate: Date;
+}
+
+export interface FoodCourt {
+    id: string;
+    name: string;
 }

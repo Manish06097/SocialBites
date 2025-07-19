@@ -15,7 +15,7 @@ import { Separator } from './ui/separator';
 
 interface MenuItemDialogProps {
   item: MenuItem;
-  stall: Pick<Stall, 'id' | 'name'>;
+  stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -60,33 +60,36 @@ export function MenuItemDialog({ item, stall, open, onOpenChange }: MenuItemDial
           <Image src={item.imageUrl} alt={item.name} width={400} height={200} className="rounded-lg object-cover" data-ai-hint="food item" />
           <p className="text-muted-foreground">{item.description}</p>
           
-          {item.customizations?.map((custom, index) => (
-            <div key={index} className="space-y-2">
-              <Label className="font-semibold">{custom.title}</Label>
-              {custom.type === 'radio' && custom.options && (
-                <RadioGroup onValueChange={(value) => handleRadioChange(custom.title, value)}>
-                  {custom.options.map((opt, i) => (
-                    <div key={i} className="flex items-center space-x-2">
-                      <RadioGroupItem value={opt.label} id={`${custom.title}-${i}`} />
-                      <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              )}
-              {custom.type === 'checkbox' && custom.options && (
-                 <div>
-                  {custom.options.map((opt, i) => (
-                     <div key={i} className="flex items-center space-x-2 my-2">
-                       <Checkbox id={`${custom.title}-${i}`} onCheckedChange={(checked) => handleCheckboxChange(custom.title, opt.label, !!checked)} />
-                       <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
+          {item.customizations && item.customizations.length > 0 && (
+            <>
+              {item.customizations.map((custom, index) => (
+                <div key={index} className="space-y-2">
+                  <Label className="font-semibold">{custom.title}</Label>
+                  {custom.type === 'radio' && custom.options && (
+                    <RadioGroup onValueChange={(value) => handleRadioChange(custom.title, value)}>
+                      {custom.options.map((opt, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <RadioGroupItem value={opt.label} id={`${custom.title}-${i}`} />
+                          <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                  {custom.type === 'checkbox' && custom.options && (
+                     <div>
+                      {custom.options.map((opt, i) => (
+                         <div key={i} className="flex items-center space-x-2 my-2">
+                           <Checkbox id={`${custom.title}-${i}`} onCheckedChange={(checked) => handleCheckboxChange(custom.title, opt.label, !!checked)} />
+                           <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
+                         </div>
+                       ))}
                      </div>
-                   ))}
-                 </div>
-              )}
-            </div>
-          ))}
-
-          <Separator />
+                  )}
+                </div>
+              ))}
+              <Separator />
+            </>
+          )}
           
           <div className="space-y-2">
             <Label className="font-semibold">Special Instructions</Label>

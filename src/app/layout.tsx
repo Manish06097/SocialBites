@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { CartProvider } from '@/context/CartProvider';
+import { FoodCourtProvider } from '@/context/FoodCourtProvider';
 import Header from '@/components/Header';
 import BottomNavBar from '@/components/BottomNavBar';
 import { CartSheet } from '@/components/CartSheet';
@@ -33,15 +34,17 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Satoshi:wght@400;500;700;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <CartProvider>
-          <div className="flex min-h-screen flex-col pb-16 md:pb-0">
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
-          </div>
-          <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
-          <Toaster />
-        </CartProvider>
+        <FoodCourtProvider>
+          <CartProvider>
+            <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+              <Header />
+              <main className="flex-grow">{children}</main>
+              <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
+            </div>
+            <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+            <Toaster />
+          </CartProvider>
+        </FoodCourtProvider>
       </body>
     </html>
   );

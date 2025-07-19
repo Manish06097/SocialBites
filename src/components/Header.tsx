@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, MapPin } from 'lucide-react';
 import Logo from './Logo';
@@ -12,10 +11,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { foodCourts } from '@/lib/data';
+import { useFoodCourt } from '@/context/FoodCourtProvider';
+import { useCart } from '@/context/CartProvider';
+import { useToast } from '@/hooks/use-toast';
 
 const Header = () => {
-  const [selectedFoodCourt, setSelectedFoodCourt] = useState(foodCourts[0]);
+  const { foodCourts, selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
+  const { cartItems, clearCart } = useCart();
+  const { toast } = useToast();
+
+  const handleFoodCourtChange = (court: typeof foodCourts[0]) => {
+    if (cartItems.length > 0 && selectedFoodCourt.id !== court.id) {
+       toast({
+        variant: 'destructive',
+        title: 'Clear your cart first!',
+        description: `You have items from ${selectedFoodCourt.name}. You can only order from one food court at a time.`,
+       });
+    } else {
+        setSelectedFoodCourt(court);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-sm">
@@ -37,7 +52,7 @@ const Header = () => {
               {foodCourts.map((court) => (
                 <DropdownMenuItem
                   key={court.id}
-                  onSelect={() => setSelectedFoodCourt(court)}
+                  onSelect={() => handleFoodCourtChange(court)}
                 >
                   {court.name}
                 </DropdownMenuItem>

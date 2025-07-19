@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useFoodCourt } from '@/context/FoodCourtProvider';
 
 function WelcomeMessage() {
   const searchParams = useSearchParams();
@@ -32,21 +33,26 @@ function WelcomeMessage() {
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+  const { selectedFoodCourt } = useFoodCourt();
+
+  const stallsForCourt = useMemo(() => {
+    return stalls.filter(stall => stall.foodCourtId === selectedFoodCourt.id);
+  }, [selectedFoodCourt]);
 
   const allCuisines = useMemo(() => {
     const cuisines = new Set<string>();
-    stalls.forEach(stall => stall.tags.forEach(tag => cuisines.add(tag)));
+    stallsForCourt.forEach(stall => stall.tags.forEach(tag => cuisines.add(tag)));
     return ['All', ...Array.from(cuisines)];
-  }, []);
+  }, [stallsForCourt]);
 
   const filteredStalls = useMemo(() => {
-    return stalls.filter(stall => {
+    return stallsForCourt.filter(stall => {
       const matchesSearch = stall.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             stall.menu.some(cat => cat.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase())));
       const matchesCuisine = !selectedCuisine || selectedCuisine === 'All' || stall.tags.includes(selectedCuisine);
       return matchesSearch && matchesCuisine;
     });
-  }, [searchTerm, selectedCuisine]);
+  }, [searchTerm, selectedCuisine, stallsForCourt]);
 
   return (
     <div className="container mx-auto px-4 py-8 md:px-6">
@@ -110,7 +116,7 @@ export default function Home() {
       </section>
 
       <section>
-        <h2 className="font-headline text-3xl font-bold">All Stalls</h2>
+        <h2 className="font-headline text-3xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
         {filteredStalls.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredStalls.map((stall: Stall) => (
