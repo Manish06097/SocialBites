@@ -30,8 +30,8 @@ export default function StallPage({ params }: { params: { stallId: string } }) {
           <Image
             src={stall.bannerUrl}
             alt={`${stall.name} banner`}
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{objectFit: 'cover'}}
             className="bg-muted"
             data-ai-hint="food stall"
           />
