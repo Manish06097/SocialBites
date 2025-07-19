@@ -35,39 +35,32 @@ type Order = {
 
 function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void; }) {
   const [timeAgo, setTimeAgo] = useState('');
-  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    const timeSince = (date: Date) => {
-      const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-      if (seconds < 5) return "just now";
-      let interval = seconds / 31536000;
-      if (interval > 1) return Math.floor(interval) + " years ago";
-      interval = seconds / 2592000;
-      if (interval > 1) return Math.floor(interval) + " months ago";
-      interval = seconds / 86400;
-      if (interval > 1) return Math.floor(interval) + " days ago";
-      interval = seconds / 3600;
-      if (interval > 1) return Math.floor(interval) + " hours ago";
-      interval = seconds / 60;
-      if (interval > 1) return Math.floor(interval) + " minutes ago";
-      return Math.floor(seconds) + " seconds ago";
+    const calculateTimeAgo = () => {
+        const timeSince = (date: Date) => {
+          const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+          if (seconds < 5) return "just now";
+          let interval = seconds / 31536000;
+          if (interval > 1) return Math.floor(interval) + " years ago";
+          interval = seconds / 2592000;
+          if (interval > 1) return Math.floor(interval) + " months ago";
+          interval = seconds / 86400;
+          if (interval > 1) return Math.floor(interval) + " days ago";
+          interval = seconds / 3600;
+          if (interval > 1) return Math.floor(interval) + " hours ago";
+          interval = seconds / 60;
+          if (interval > 1) return Math.floor(interval) + " minutes ago";
+          return Math.floor(seconds) + " seconds ago";
+        }
+        setTimeAgo(timeSince(order.timestamp));
     }
     
-    setTimeAgo(timeSince(order.timestamp));
-    const intervalId = setInterval(() => {
-        setTimeAgo(timeSince(order.timestamp));
-    }, 60000);
+    calculateTimeAgo();
+    const intervalId = setInterval(calculateTimeAgo, 60000); // Update every minute
 
     return () => clearInterval(intervalId);
-
-  }, [order.timestamp, isClient]);
+  }, [order.timestamp]);
 
 
   return (
@@ -80,7 +73,7 @@ function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
             </div>
             <div className="text-right">
                 <p className="font-bold text-lg">₹{order.total.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">{isClient ? timeAgo : '...'}</p>
+                <p className="text-xs text-muted-foreground">{timeAgo || '...'}</p>
             </div>
         </div>
       </CardHeader>
@@ -133,8 +126,12 @@ function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
 
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [isClient, setIsClient] = useState(false);
   
   useEffect(() => {
+    // This ensures this code runs only on the client, after hydration
+    setIsClient(true);
+    
     // In a real app this would come from a database in real-time
     const initialOrders: Order[] = [
       {
@@ -200,9 +197,11 @@ export default function VendorOrdersPage() {
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     setOrders(currentOrders => {
+      // Optimistically update UI. Rejection removes the order entirely.
       if (newStatus === 'rejected') {
         return currentOrders.filter(order => order.id !== orderId);
       }
+      // Other status changes move the order between tabs.
       return currentOrders.map(order => 
         order.id === orderId ? { ...order, status: newStatus } : order
       );
@@ -213,6 +212,20 @@ export default function VendorOrdersPage() {
   const preparingOrders = orders.filter(o => o.status === 'preparing');
   const readyOrders = orders.filter(o => o.status === 'ready');
   const completedOrders = orders.filter(o => o.status === 'completed');
+
+  if (!isClient) {
+      // Render a skeleton or loading state on the server and initial client render
+      return (
+           <>
+              <div className="flex items-center justify-between">
+                <h1 className="font-headline text-lg font-semibold md:text-2xl">
+                  Order Management
+                </h1>
+              </div>
+              <p className="mt-4 text-center text-muted-foreground">Loading orders...</p>
+           </>
+      )
+  }
 
   return (
     <>
