@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ChefHat, Bike, PartyPopper } from 'lucide-react';
 import Image from 'next/image';
+import { useParams } from 'next/navigation';
 
 // Mock data for a single order, replace with actual data fetching
 const mockOrder = {
@@ -82,10 +83,13 @@ const OrderStatusTimeline = ({ status }: { status: keyof typeof statusInfo }) =>
 };
 
 
-export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
-  // In a real app, you'd fetch the order using params.orderId
+export default function OrderTrackingPage() {
+  const params = useParams();
+  const orderId = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
+  
+  // In a real app, you'd fetch the order using orderId
   const order = mockOrder;
-  order.id = params.orderId;
+  order.id = orderId;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6">
