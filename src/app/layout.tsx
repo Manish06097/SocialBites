@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { CartProvider } from '@/context/CartProvider';
 import Header from '@/components/Header';
+import BottomNavBar from '@/components/BottomNavBar';
 
 export const metadata: Metadata = {
   title: 'Surat Social Bites',
@@ -24,10 +25,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <CartProvider>
-          <div className="flex min-h-screen flex-col">
+          <div className="flex min-h-screen flex-col pb-16 md:pb-0">
             <Header />
             <main className="flex-grow">{children}</main>
             {/* <Footer /> */}
+            <BottomNavBar />
           </div>
           <Toaster />
         </CartProvider>
