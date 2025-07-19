@@ -40,26 +40,26 @@ export default function StallPage() {
             data-ai-hint="food stall"
           />
         </div>
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="-mt-12 flex items-end gap-4">
-             <Image
-                src={stall.logoUrl}
-                alt={`${stall.name} logo`}
-                width={96}
-                height={96}
-                className="h-24 w-24 rounded-full border-4 border-background bg-background object-cover"
-                data-ai-hint="company logo"
-              />
-            <div className="pb-2">
-              <h1 className="font-headline text-3xl font-extrabold">{stall.name}</h1>
-              <div className="mt-1 flex items-center gap-2 text-muted-foreground">
-                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                <span className="font-semibold">{stall.rating.toFixed(1)}</span>
-                <span>•</span>
-                <span>{stall.tags.join(', ')}</span>
-              </div>
+        <div className="container mx-auto -mt-12 px-4 md:-mt-16 md:px-6">
+            <div className="flex items-end gap-4">
+                 <Image
+                    src={stall.logoUrl}
+                    alt={`${stall.name} logo`}
+                    width={96}
+                    height={96}
+                    className="h-24 w-24 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
+                    data-ai-hint="company logo"
+                  />
+                <div className="pb-2">
+                  <h1 className="font-headline text-3xl font-extrabold">{stall.name}</h1>
+                  <div className="mt-1 flex items-center gap-2 text-muted-foreground">
+                    <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold">{stall.rating.toFixed(1)}</span>
+                    <span>•</span>
+                    <span>{stall.tags.join(', ')}</span>
+                  </div>
+                </div>
             </div>
-          </div>
         </div>
       </div>
 
