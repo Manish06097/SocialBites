@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, Bike } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useSound } from '@/hooks/use-sound';
 
 type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed';
 
@@ -35,8 +36,10 @@ interface Order {
 
 const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (id: string, status: OrderStatus) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     const calculateTimeSince = () => {
       const seconds = Math.floor((new Date().getTime() - new Date(order.timestamp).getTime()) / 1000);
       if (seconds < 60) return 'Just now';
@@ -63,7 +66,7 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
             </div>
             <div className="text-right">
                 <p className="font-bold text-lg">₹{order.total.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">{timeAgo || '...'}</p>
+                {isClient ? <p className="text-xs text-muted-foreground">{timeAgo}</p> : <p className="text-xs text-muted-foreground">...</p>}
             </div>
         </div>
       </CardHeader>
@@ -117,11 +120,13 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [playNotification] = useSound('/notification.mp3');
 
   useEffect(() => {
     // This ensures this code only runs on the client, preventing hydration mismatch
     // by ensuring mock data (with dynamic timestamps) is only created client-side.
-    const mockOrders: Order[] = [
+    setIsClient(true);
+    const initialOrders: Order[] = [
       {
         id: 'SSB-54321',
         customerName: 'Aisha Sharma',
@@ -180,9 +185,27 @@ export default function VendorOrdersPage() {
         timestamp: new Date(Date.now() - 30 * 60 * 1000),
       },
     ];
-    setOrders(mockOrders);
-    setIsClient(true);
-  }, []);
+    setOrders(initialOrders);
+
+    // Simulate new orders arriving
+    const interval = setInterval(() => {
+        const newOrderId = `SSB-${Math.floor(Math.random() * 90000) + 10000}`;
+        const newOrder: Order = {
+            id: newOrderId,
+            customerName: "New Customer",
+            table: `T${Math.floor(Math.random() * 20)}`,
+            status: 'new',
+            items: [{ name: 'Butter Locho', quantity: 1 }],
+            total: 80,
+            timestamp: new Date(),
+        };
+        setOrders(prevOrders => [newOrder, ...prevOrders]);
+        playNotification();
+    }, 15000); // Every 15 seconds
+
+    return () => clearInterval(interval); // Cleanup on unmount
+
+  }, [playNotification]);
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     setOrders(prevOrders =>
@@ -201,7 +224,17 @@ export default function VendorOrdersPage() {
                 Order Management
                 </h1>
             </div>
-            <p className="mt-4 text-center text-muted-foreground">Loading orders...</p>
+            <Tabs defaultValue="new" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2 h-auto">
+                <TabsTrigger value="new">New</TabsTrigger>
+                <TabsTrigger value="preparing">Preparing</TabsTrigger>
+                <TabsTrigger value="ready">Ready</TabsTrigger>
+                <TabsTrigger value="completed">Completed</TabsTrigger>
+              </TabsList>
+               <TabsContent value="new" className="mt-4">
+                  <p className="text-muted-foreground col-span-full text-center py-8">Loading orders...</p>
+               </TabsContent>
+            </Tabs>
         </>
     )
   }
