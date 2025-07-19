@@ -10,8 +10,8 @@ export const stalls: Stall[] = [
   {
     id: 's1',
     name: "Gopal Locho",
-    logoUrl: "https://placehold.co/100x100.png",
-    bannerUrl: "https://placehold.co/600x300.png",
+    logoUrl: "https://images.unsplash.com/photo-1707330069618-0dff8e80a6e8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzUyODk2OTI2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    bannerUrl: "https://images.unsplash.com/photo-1713699860139-1fa847f155b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxmb29kJTIwc3RhbGx8ZW58MHx8fHwxNzUyODk2OTI2fDA&ixlib=rb-4.1.0&q=80&w=1080",
     rating: 4.8,
     tags: ["Gujarati", "Snacks", "Street Food"],
     menu: [
