@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { PlusCircle, Pencil } from 'lucide-react'
 import { stalls } from '@/lib/data' // We'll use mock data for now
-import type { Stall, MenuCategory, MenuItem } from '@/lib/types'
+import type { Stall } from '@/lib/types'
 
 
 // Let's assume the logged-in vendor is for 'Gopal Locho' (stall 's1')
@@ -62,18 +62,18 @@ export default function VendorMenuPage() {
       <Accordion type="multiple" defaultValue={stallData.menu.map(cat => cat.title)} className="w-full mt-4 space-y-4">
         {stallData.menu.map((category) => (
           <AccordionItem key={category.title} value={category.title} className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline font-headline text-xl">
-              <div className="flex items-center gap-4">
-                {category.title}
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Edit category name</span>
-                </Button>
-              </div>
-            </AccordionTrigger>
+            <div className="flex w-full items-center justify-between p-4">
+              <AccordionTrigger className="p-0 hover:no-underline font-headline text-xl flex-1 text-left">
+                  {category.title}
+              </AccordionTrigger>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Pencil className="h-4 w-4" />
+                  <span className="sr-only">Edit category name</span>
+              </Button>
+            </div>
             <AccordionContent className="p-4 pt-0">
                 <div className="space-y-4">
-                    {category.items.map((item) => (
+                    {category.items.map((item: any) => (
                         <Card key={item.id}>
                             <CardContent className="flex items-center gap-4 p-4">
                                 <Image 
@@ -90,11 +90,11 @@ export default function VendorMenuPage() {
                                      <div className="flex items-center space-x-2 mt-2">
                                         <Switch 
                                             id={`available-${item.id}`} 
-                                            checked={(item as any).available !== false} // Default to available if undefined
+                                            checked={item.available !== false} // Default to available if undefined
                                             onCheckedChange={(checked) => handleAvailabilityChange(item.id, checked)}
                                         />
                                         <Label htmlFor={`available-${item.id}`} className="text-xs text-muted-foreground">
-                                            {(item as any).available !== false ? 'Available' : 'Sold Out'}
+                                            {item.available !== false ? 'Available' : 'Sold Out'}
                                         </Label>
                                     </div>
                                 </div>
@@ -117,5 +117,3 @@ export default function VendorMenuPage() {
     </>
   );
 }
-
-    
