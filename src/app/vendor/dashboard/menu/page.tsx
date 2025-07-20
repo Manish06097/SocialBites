@@ -18,7 +18,8 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { PlusCircle, Pencil } from 'lucide-react'
 import { stalls } from '@/lib/data' // We'll use mock data for now
-import type { Stall } from '@/lib/types'
+import type { Stall, MenuItem } from '@/lib/types'
+import { EditMenuItemDialog } from '@/components/EditMenuItemDialog'
 
 
 // Let's assume the logged-in vendor is for 'Gopal Locho' (stall 's1')
@@ -26,6 +27,7 @@ const VENDOR_STALL_ID = 's1';
 
 export default function VendorMenuPage() {
   const [stallData, setStallData] = useState<Stall | undefined>(stalls.find(s => s.id === VENDOR_STALL_ID));
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
   if (!stallData) {
     return <div>Loading...</div>; // Or an error message
@@ -48,6 +50,28 @@ export default function VendorMenuPage() {
         return { ...prevStall, menu: newMenu };
     });
   };
+
+  const handleEditItem = (item: MenuItem) => {
+    setEditingItem(item);
+  };
+  
+  const handleSaveChanges = (updatedItem: MenuItem) => {
+    console.log("Saving changes for item:", updatedItem);
+    // Here you would make an API call to save the changes
+     setStallData(prevStall => {
+        if (!prevStall) return prevStall;
+        
+        const newMenu = prevStall.menu.map(category => ({
+            ...category,
+            items: category.items.map(item => 
+                item.id === updatedItem.id ? updatedItem : item
+            )
+        }));
+
+        return { ...prevStall, menu: newMenu };
+    });
+    setEditingItem(null); // Close the dialog
+  }
 
   return (
     <>
@@ -98,7 +122,7 @@ export default function VendorMenuPage() {
                                         </Label>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm">
+                                <Button variant="outline" size="sm" onClick={() => handleEditItem(item)}>
                                     <Pencil className="mr-2 h-4 w-4" />
                                     Edit
                                 </Button>
@@ -114,6 +138,15 @@ export default function VendorMenuPage() {
           </AccordionItem>
         ))}
       </Accordion>
+      
+      {editingItem && (
+        <EditMenuItemDialog 
+            item={editingItem} 
+            open={!!editingItem} 
+            onOpenChange={(open) => !open && setEditingItem(null)}
+            onSave={handleSaveChanges}
+        />
+      )}
     </>
   );
 }
