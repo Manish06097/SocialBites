@@ -19,16 +19,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, PlusCircle } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
+import { Combobox } from './ui/combobox';
 
 interface EditMenuItemDialogProps {
-  item: MenuItem;
+  item: Partial<MenuItem>;
+  allCategories: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (updatedItem: MenuItem) => void;
+  onSave: (updatedItem: Partial<MenuItem>) => void;
 }
 
-export function EditMenuItemDialog({ item, open, onOpenChange, onSave }: EditMenuItemDialogProps) {
-  const [editedItem, setEditedItem] = useState<MenuItem>(item);
+export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, onSave }: EditMenuItemDialogProps) {
+  const [editedItem, setEditedItem] = useState(item);
 
   useEffect(() => {
     // Deep copy of item to avoid direct mutation
@@ -82,26 +84,42 @@ export function EditMenuItemDialog({ item, open, onOpenChange, onSave }: EditMen
   const handleSave = () => {
     onSave(editedItem);
   };
+  
+  const isNew = 'isNew' in item && item.isNew;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Edit Menu Item</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">{isNew ? 'Add New Item' : 'Edit Menu Item'}</DialogTitle>
           <DialogDescription>
-            Make changes to your menu item here. Click save when you're done.
+            {isNew ? 'Fill in the details for your new menu item.' : "Make changes to your menu item here. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
         <div className="space-y-6 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Item Name</Label>
-            <Input id="name" value={editedItem.name} onChange={(e) => handleFieldChange('name', e.target.value)} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Item Name</Label>
+                <Input id="name" value={editedItem.name} onChange={(e) => handleFieldChange('name', e.target.value)} />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="price">Base Price (₹)</Label>
+              <Input id="price" type="number" value={editedItem.price} onChange={(e) => handleFieldChange('price', Number(e.target.value))} />
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="price">Base Price (₹)</Label>
-            <Input id="price" type="number" value={editedItem.price} onChange={(e) => handleFieldChange('price', Number(e.target.value))} />
+            <Label htmlFor="category">Category</Label>
+            <Combobox 
+                options={allCategories.map(c => ({ label: c, value: c }))}
+                value={editedItem.category || ''}
+                onChange={(value) => handleFieldChange('category', value)}
+                placeholder="Select or create a category..."
+                emptyMessage="No categories found."
+            />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea

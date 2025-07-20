@@ -1,3 +1,4 @@
+
 export interface Stall {
   id: string;
   name: string;
@@ -24,6 +25,7 @@ export interface MenuItem {
   orders: number;
   available?: boolean;
   customizations?: Customization[];
+  category?: string; // Added category to menu item
 }
 
 export interface Customization {

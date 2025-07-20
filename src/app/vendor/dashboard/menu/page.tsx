@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import {
   Card,
@@ -17,24 +17,60 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { PlusCircle, Pencil } from 'lucide-react'
-import { stalls } from '@/lib/data' // We'll use mock data for now
-import type { Stall, MenuItem } from '@/lib/types'
+import { stalls } from '@/lib/data' 
+import type { Stall, MenuItem, MenuCategory } from '@/lib/types'
 import { EditMenuItemDialog } from '@/components/EditMenuItemDialog'
 
 
 // Let's assume the logged-in vendor is for 'Gopal Locho' (stall 's1')
 const VENDOR_STALL_ID = 's1';
 
+const getInitialStallData = (): Stall | undefined => {
+    const stall = stalls.find(s => s.id === VENDOR_STALL_ID);
+    if (!stall) return undefined;
+
+    // Ensure all items have a category property
+    const menuWithCategories = stall.menu.map(category => ({
+        ...category,
+        items: category.items.map(item => ({
+            ...item,
+            category: category.title
+        }))
+    }));
+    
+    return { ...stall, menu: menuWithCategories };
+};
+
 export default function VendorMenuPage() {
-  const [stallData, setStallData] = useState<Stall | undefined>(stalls.find(s => s.id === VENDOR_STALL_ID));
-  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [stallData, setStallData] = useState<Stall | undefined>(getInitialStallData());
+  const [editingItem, setEditingItem] = useState<Partial<MenuItem> & { isNew?: boolean } | null>(null);
+
+  const menuItemsByCategory = useMemo(() => {
+    if (!stallData) return {};
+    
+    const allItems = stallData.menu.flatMap(cat => cat.items);
+    
+    return allItems.reduce((acc, item) => {
+        const category = item.category || 'Uncategorized';
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push(item);
+        return acc;
+    }, {} as Record<string, MenuItem[]>);
+
+  }, [stallData]);
+
+  const allCategories = useMemo(() => {
+    return Object.keys(menuItemsByCategory);
+  }, [menuItemsByCategory]);
+
 
   if (!stallData) {
     return <div>Loading...</div>; // Or an error message
   }
 
   const handleAvailabilityChange = (itemId: string, newAvailability: boolean) => {
-    // This is where you'd call an API. For now, we'll just update local state.
     console.log(`Setting item ${itemId} to ${newAvailability ? 'available' : 'sold out'}`);
     
     setStallData(prevStall => {
@@ -54,50 +90,90 @@ export default function VendorMenuPage() {
   const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
   };
+
+  const handleAddNewItem = () => {
+    setEditingItem({
+        id: `m-${Date.now()}`, // temp ID
+        name: '',
+        price: 0,
+        description: '',
+        category: allCategories[0] || '',
+        imageUrl: 'https://placehold.co/400x300.png',
+        rating: 0,
+        orders: 0,
+        isNew: true,
+        customizations: [],
+    });
+  };
   
-  const handleSaveChanges = (updatedItem: MenuItem) => {
+  const handleSaveChanges = (updatedItem: Partial<MenuItem>) => {
     console.log("Saving changes for item:", updatedItem);
-    // Here you would make an API call to save the changes
-     setStallData(prevStall => {
+    
+    setStallData(prevStall => {
         if (!prevStall) return prevStall;
         
-        const newMenu = prevStall.menu.map(category => ({
-            ...category,
-            items: category.items.map(item => 
-                item.id === updatedItem.id ? updatedItem : item
-            )
-        }));
+        const isNew = !prevStall.menu.flatMap(c => c.items).some(i => i.id === updatedItem.id);
+        const targetCategoryTitle = updatedItem.category || 'Uncategorized';
+
+        let newMenu = [...prevStall.menu];
+        
+        // Find or create the target category
+        let targetCategory = newMenu.find(c => c.title === targetCategoryTitle);
+        if (!targetCategory) {
+            targetCategory = { title: targetCategoryTitle, items: [] };
+            newMenu.push(targetCategory);
+        }
+
+        // Remove item from its old category if it's not a new item and category has changed
+        if (!isNew) {
+           newMenu = newMenu.map(c => ({
+               ...c,
+               items: c.items.filter(i => i.id !== updatedItem.id)
+           }));
+        }
+
+        // Add or update the item in the target category
+        const itemIndex = targetCategory.items.findIndex(i => i.id === updatedItem.id);
+        if (itemIndex > -1) {
+            targetCategory.items[itemIndex] = updatedItem as MenuItem;
+        } else {
+            targetCategory.items.push(updatedItem as MenuItem);
+        }
+
+        // Clean up empty categories
+        newMenu = newMenu.filter(c => c.items.length > 0);
 
         return { ...prevStall, menu: newMenu };
     });
-    setEditingItem(null); // Close the dialog
+
+    setEditingItem(null);
   }
 
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
-        <Button>
+        <Button onClick={handleAddNewItem}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Category
+          Add New Item
         </Button>
       </div>
 
-      <Accordion type="multiple" defaultValue={stallData.menu.map(cat => cat.title)} className="w-full mt-4 space-y-4">
-        {stallData.menu.map((category) => (
-          <AccordionItem key={category.title} value={category.title} className="border rounded-lg bg-card">
+      <Accordion type="multiple" defaultValue={allCategories} className="w-full mt-4 space-y-4">
+        {Object.entries(menuItemsByCategory).map(([categoryTitle, items]) => (
+          <AccordionItem key={categoryTitle} value={categoryTitle} className="border rounded-lg bg-card">
             <div className="flex w-full items-center justify-between p-4">
-              <AccordionTrigger className="p-0 hover:no-underline font-headline text-xl flex-1 text-left">
-                  {category.title}
+               <AccordionTrigger className="p-0 hover:no-underline font-headline text-xl flex-1 text-left">
+                  {categoryTitle}
               </AccordionTrigger>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-50 cursor-not-allowed">
                   <Pencil className="h-4 w-4" />
                   <span className="sr-only">Edit category name</span>
               </Button>
             </div>
             <AccordionContent className="p-4 pt-0">
                 <div className="space-y-4">
-                    {category.items.map((item: any) => (
+                    {items.map((item: MenuItem) => (
                         <Card key={item.id}>
                             <CardContent className="flex items-center gap-4 p-4">
                                 <Image 
@@ -129,10 +205,6 @@ export default function VendorMenuPage() {
                             </CardContent>
                         </Card>
                     ))}
-                    <Button variant="outline" className="w-full">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add New Item
-                    </Button>
                 </div>
             </AccordionContent>
           </AccordionItem>
@@ -141,7 +213,8 @@ export default function VendorMenuPage() {
       
       {editingItem && (
         <EditMenuItemDialog 
-            item={editingItem} 
+            item={editingItem}
+            allCategories={allCategories}
             open={!!editingItem} 
             onOpenChange={(open) => !open && setEditingItem(null)}
             onSave={handleSaveChanges}
