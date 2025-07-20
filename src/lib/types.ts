@@ -24,14 +24,14 @@ export interface MenuItem {
   rating: number;
   orders: number;
   available?: boolean;
-  customizations?: Customization[];
-  category?: string; // Added category to menu item
+  customizations: Customization[]; // Stored as JSONB in the DB, array in the app
+  category?: string;
 }
 
 export interface Customization {
   title: string;
   type: 'radio' | 'checkbox';
-  options?: CustomizationOption[];
+  options: CustomizationOption[];
 }
 
 export interface CustomizationOption {

@@ -21,13 +21,13 @@ export const stalls: Stall[] = [
         title: "Locho Varieties",
         items: [
           { id: "m1-1", name: "Butter Locho", description: "Classic steamed gram flour cake with a dollop of butter.", price: 80, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 500, customizations: [ { title: 'Spice Level', type: 'radio', options: [{ label: 'Mild', price_modifier: 0 }, { label: 'Medium', price_modifier: 0 }, { label: 'Spicy', price_modifier: 10 }] }, { title: 'Add-ons', type: 'checkbox', options: [{ label: 'Extra Cheese', price_modifier: 20 }, { label: 'Garlic Chutney', price_modifier: 15 }] } ] },
-          { id: "m1-2", name: "Cheese Roll Locho", description: "Locho rolled with generous cheese filling.", price: 120, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350 },
+          { id: "m1-2", name: "Cheese Roll Locho", description: "Locho rolled with generous cheese filling.", price: 120, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350, customizations: [] },
         ],
       },
       {
         title: "Other Delicacies",
         items: [
-          { id: "m1-3", name: "Khaman", description: "Soft and spongy steamed gram flour snack.", price: 60, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 400 },
+          { id: "m1-3", name: "Khaman", description: "Soft and spongy steamed gram flour snack.", price: 60, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 400, customizations: [] },
         ],
       }
     ],
@@ -45,14 +45,14 @@ export const stalls: Stall[] = [
             title: "Signature Pizzas",
             items: [
                 { id: "m2-1", name: "Margherita Pizza", description: "The classic with fresh mozzarella and basil.", price: 250, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 800, customizations: [ { title: 'Crust Type', type: 'radio', options: [{ label: 'Classic Hand-Tossed', price_modifier: 0 }, { label: 'Cheese Burst', price_modifier: 80 }, { label: 'Thin Crust', price_modifier: 20 }] }, { title: 'Extra Toppings', type: 'checkbox', options: [{ label: 'Olives', price_modifier: 40 }, { label: 'Mushrooms', price_modifier: 40 }] } ] },
-                { id: "m2-2", name: "Farmhouse Pizza", description: "Loaded with fresh veggies like onions, capsicum, tomatoes.", price: 350, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 950 },
+                { id: "m2-2", name: "Farmhouse Pizza", description: "Loaded with fresh veggies like onions, capsicum, tomatoes.", price: 350, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 950, customizations: [] },
             ],
         },
         {
             title: "Sides",
             items: [
-                { id: "m2-3", name: "Garlic Breadsticks", description: "Warm, soft breadsticks with a garlic butter glaze.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1200 },
-                { id: "m2-4", name: "Choco Lava Cake", description: "A decadent chocolate cake with a molten center.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1500 },
+                { id: "m2-3", name: "Garlic Breadsticks", description: "Warm, soft breadsticks with a garlic butter glaze.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1200, customizations: [] },
+                { id: "m2-4", name: "Choco Lava Cake", description: "A decadent chocolate cake with a molten center.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1500, customizations: [] },
             ],
         },
     ]
@@ -70,14 +70,14 @@ export const stalls: Stall[] = [
         {
             title: "Starters",
             items: [
-                { id: "m3-1", name: "Manchurian Dry", description: "Crispy vegetable balls tossed in a tangy sauce.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 600 },
+                { id: "m3-1", name: "Manchurian Dry", description: "Crispy vegetable balls tossed in a tangy sauce.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 600, customizations: [] },
             ],
         },
         {
             title: "Main Course",
             items: [
                 { id: "m3-2", name: "Hakka Noodles", description: "Stir-fried noodles with mixed vegetables.", price: 220, imageUrl: "https://placehold.co/400x300.png", rating: 4.5, orders: 700, customizations: [ { title: 'Variant', type: 'radio', options: [{ label: 'Veg', price_modifier: 0 }, { label: 'Egg', price_modifier: 30 }, { label: 'Chicken', price_modifier: 60 }] } ] },
-                { id: "m3-3", name: "Schezwan Fried Rice", description: "Spicy fried rice with a bold Schezwan flavor.", price: 240, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 650 },
+                { id: "m3-3", name: "Schezwan Fried Rice", description: "Spicy fried rice with a bold Schezwan flavor.", price: 240, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 650, customizations: [] },
             ],
         }
     ]
@@ -94,14 +94,14 @@ export const stalls: Stall[] = [
         {
             title: "Pastries & Cakes",
             items: [
-                { id: "m4-1", name: "Dutch Truffle Pastry", description: "Rich, dense, and gooey chocolate truffle pastry.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 2000 },
-                { id: "m4-2", name: "Red Velvet Cake (500g)", description: "Classic red velvet cake with cream cheese frosting.", price: 600, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 400 },
+                { id: "m4-1", name: "Dutch Truffle Pastry", description: "Rich, dense, and gooey chocolate truffle pastry.", price: 150, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 2000, customizations: [] },
+                { id: "m4-2", name: "Red Velvet Cake (500g)", description: "Classic red velvet cake with cream cheese frosting.", price: 600, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 400, customizations: [] },
             ],
         },
         {
             title: "Beverages",
             items: [
-                { id: "m4-3", name: "Cold Coffee", description: "Thick and creamy cold coffee shake.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 800 },
+                { id: "m4-3", name: "Cold Coffee", description: "Thick and creamy cold coffee shake.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 800, customizations: [] },
             ],
         }
     ]
@@ -119,14 +119,14 @@ export const stalls: Stall[] = [
         {
             title: "Sizzlers",
             items: [
-                { id: "m5-1", name: "Veg Sizzler", description: "Assorted veggies, patty, and noodles on a hot plate.", price: 450, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 500 },
-                { id: "m5-2", name: "Paneer Shashlik Sizzler", description: "Marinated paneer skewers with sizzling veggies.", price: 550, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350 },
+                { id: "m5-1", name: "Veg Sizzler", description: "Assorted veggies, patty, and noodles on a hot plate.", price: 450, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 500, customizations: [] },
+                { id: "m5-2", name: "Paneer Shashlik Sizzler", description: "Marinated paneer skewers with sizzling veggies.", price: 550, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 350, customizations: [] },
             ],
         },
         {
             title: "Mexican",
             items: [
-                { id: "m5-3", name: "Cheesy Nachos", description: "Crispy nachos topped with cheese sauce and salsa.", price: 220, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 800 },
+                { id: "m5-3", name: "Cheesy Nachos", description: "Crispy nachos topped with cheese sauce and salsa.", price: 220, imageUrl: "https://placehold.co/400x300.png", rating: 4.6, orders: 800, customizations: [] },
             ],
         }
     ]
@@ -143,14 +143,14 @@ export const stalls: Stall[] = [
         {
             title: "Fresh Juices",
             items: [
-                { id: "m6-1", name: "Watermelon Juice", description: "Refreshing and hydrating freshly squeezed juice.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1200 },
-                { id: "m6-2", name: "Mixed Fruit Juice", description: "A blend of seasonal fruits for a vitamin boost.", price: 140, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 900 },
+                { id: "m6-1", name: "Watermelon Juice", description: "Refreshing and hydrating freshly squeezed juice.", price: 100, imageUrl: "https://placehold.co/400x300.png", rating: 4.9, orders: 1200, customizations: [] },
+                { id: "m6-2", name: "Mixed Fruit Juice", description: "A blend of seasonal fruits for a vitamin boost.", price: 140, imageUrl: "https://placehold.co/400x300.png", rating: 4.8, orders: 900, customizations: [] },
             ],
         },
         {
             title: "Milkshakes",
             items: [
-                { id: "m6-3", name: "Oreo Shake", description: "A classic blend of Oreo cookies and ice cream.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1500 },
+                { id: "m6-3", name: "Oreo Shake", description: "A classic blend of Oreo cookies and ice cream.", price: 180, imageUrl: "https://placehold.co/400x300.png", rating: 4.7, orders: 1500, customizations: [] },
             ],
         }
     ]
