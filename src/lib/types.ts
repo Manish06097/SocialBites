@@ -22,13 +22,19 @@ export interface MenuItem {
   imageUrl: string;
   rating: number;
   orders: number;
+  available?: boolean;
   customizations?: Customization[];
 }
 
 export interface Customization {
   title: string;
-  type: 'radio' | 'checkbox' | 'text';
-  options?: { label: string; price_modifier: number }[];
+  type: 'radio' | 'checkbox';
+  options?: CustomizationOption[];
+}
+
+export interface CustomizationOption {
+  label: string; 
+  price_modifier: number
 }
 
 export interface CartItem {
