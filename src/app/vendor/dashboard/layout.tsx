@@ -13,12 +13,11 @@ import {
   LogOut,
   ClipboardList
 } from 'lucide-react'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import VendorBottomNavBar from '@/components/VendorBottomNavBar'
+import { signOut } from '../actions'
 
 const navItems = [
     { href: '/vendor/dashboard', icon: Home, label: 'Dashboard' },
@@ -34,13 +33,6 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-
-  const signOut = async () => {
-    'use server';
-    const supabase = await createSupabaseServerClient();
-    await supabase.auth.signOut();
-    return redirect('/vendor/login');
-  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
