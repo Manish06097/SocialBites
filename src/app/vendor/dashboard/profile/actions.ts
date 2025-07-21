@@ -37,8 +37,7 @@ export async function updateStallDetails(prevState: any, formData: FormData) {
     .from('stalls')
     .update({ 
         name: name, 
-        tags: tags,
-        updated_at: new Date().toISOString()
+        tags: tags
     })
     .eq('id', stallId);
 
