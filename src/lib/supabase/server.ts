@@ -1,10 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-// Define a function to create a Supabase client for server-side operations.
-// This function encapsulates the logic for handling cookies and ensures
-// that the Supabase client is configured correctly for server components.
-export function createSupabaseServerClient() {
+export const createSupabaseServerClient = () => {
   const cookieStore = cookies();
 
   return createServerClient(
@@ -36,4 +33,4 @@ export function createSupabaseServerClient() {
       },
     }
   );
-}
+};

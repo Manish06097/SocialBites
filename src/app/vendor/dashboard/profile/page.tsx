@@ -7,7 +7,7 @@ import VendorProfileClientPage from './client-page';
 import type { Stall } from '@/lib/types';
 
 export default async function VendorProfilePage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
