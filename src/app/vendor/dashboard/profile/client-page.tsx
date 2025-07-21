@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useFormState } from 'react-dom';
+import { useEffect, useRef, useActionState } from 'react';
 import {
   Card,
   CardContent,
@@ -32,7 +31,7 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
   const formRef = useRef<HTMLFormElement>(null);
 
   const initialState = { message: '', errors: {} };
-  const [state, dispatch] = useFormState(updateStallDetails, initialState);
+  const [state, dispatch] = useActionState(updateStallDetails, initialState);
 
   useEffect(() => {
     if (state.message) {
