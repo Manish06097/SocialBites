@@ -1,5 +1,5 @@
 
-'use client';
+'use server';
 
 import {
   Card,
@@ -24,6 +24,9 @@ import {
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 const mockRecentOrders = [
     { id: 'SSB-54321', customerName: 'Aisha Sharma', table: 'T05', total: 220, status: 'New' },
@@ -32,11 +35,41 @@ const mockRecentOrders = [
     { id: 'SSB-54324', customerName: 'Karan Desai', table: 'T01', total: 180, status: 'Ready' },
 ]
 
-export default function VendorDashboard() {
+export default async function VendorDashboard() {
+  const cookieStore = cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/vendor/login');
+  }
+
+  const { data: stall, error } = await supabase
+    .from('stalls')
+    .select('name')
+    .eq('owner_id', user.id)
+    .single();
+
+  if (error || !stall) {
+    console.error('Error fetching stall for user:', user.id, error);
+    // Redirect or show an error message if the vendor doesn't have a stall assigned
+    return (
+        <div className="flex flex-col items-center justify-center h-full">
+            <h1 className="font-headline text-2xl">Error</h1>
+            <p>Could not find a stall associated with your account.</p>
+            <Button asChild variant="link"><Link href="/vendor/login">Logout</Link></Button>
+        </div>
+    );
+  }
+
+
   return (
     <>
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">Dashboard</h1>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">
+          Welcome, {stall.name}!
+        </h1>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <Card>
