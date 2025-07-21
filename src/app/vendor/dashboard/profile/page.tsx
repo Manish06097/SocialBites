@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { QrCode, Image as ImageIcon, Save } from 'lucide-react'
+import { QrCode, Image as ImageIcon, Save, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { signOut } from '../../actions'
 
 export default function VendorProfilePage() {
   return (
@@ -49,7 +50,7 @@ export default function VendorProfilePage() {
             <CardHeader>
                 <CardTitle>Branding</CardTitle>
                 <CardDescription>Update your stall's logo and banner.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label>Stall Logo (1:1 ratio)</Label>
@@ -86,6 +87,21 @@ export default function VendorProfilePage() {
                         View & Generate QR Codes
                     </Link>
                  </Button>
+            </CardContent>
+        </Card>
+        
+        <Card>
+           <CardHeader>
+                <CardTitle>Account</CardTitle>
+                <CardDescription>Log out of your vendor account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form action={signOut}>
+                    <Button variant="outline" className="w-full md:w-auto">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                    </Button>
+                </form>
             </CardContent>
         </Card>
       </div>
