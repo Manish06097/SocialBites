@@ -1,14 +1,18 @@
 
 
+
 export interface Stall {
   id: string;
   name: string;
-  logoUrl: string;
-  bannerUrl: string;
+  logo_url: string;
+  banner_url: string;
   rating: number;
   tags: string[];
   menu: MenuCategory[];
   foodCourtId: string;
+  owner_id: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface MenuCategory {

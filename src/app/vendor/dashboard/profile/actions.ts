@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-export async function updateStallDetails(formData: FormData) {
+export async function updateStallDetails(prevState: any, formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -18,10 +18,9 @@ export async function updateStallDetails(formData: FormData) {
   const tags = (formData.get('tags') as string).split(',').map(tag => tag.trim());
 
   if (!stallId || !name) {
-    return { error: 'Stall ID and Name are required.' };
+    return { message: 'Stall ID and Name are required.', errors: { name: !name } };
   }
   
-  // Verify the user owns the stall they are trying to edit
   const { data: stall, error: stallError } = await supabase
     .from('stalls')
     .select('id')
@@ -31,7 +30,7 @@ export async function updateStallDetails(formData: FormData) {
 
   if (stallError || !stall) {
     console.error('Security check failed: User does not own stall', stallError);
-    return { error: 'You do not have permission to edit this stall.' };
+    return { message: 'You do not have permission to edit this stall.', errors: { auth: true } };
   }
 
   const { error: updateError } = await supabase
@@ -45,10 +44,10 @@ export async function updateStallDetails(formData: FormData) {
 
   if (updateError) {
     console.error('Error updating stall details:', updateError);
-    return { error: updateError.message };
+    return { message: updateError.message, errors: { db: true } };
   }
 
   revalidatePath('/vendor/dashboard/profile');
   
-  return { success: true };
+  return { message: 'Stall details updated successfully!', errors: {} };
 }
