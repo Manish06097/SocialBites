@@ -26,7 +26,6 @@ import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 const mockRecentOrders = [
     { id: 'SSB-54321', customerName: 'Aisha Sharma', table: 'T05', total: 220, status: 'New' },
@@ -36,8 +35,7 @@ const mockRecentOrders = [
 ]
 
 export default async function VendorDashboard() {
-  const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = createSupabaseServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -53,12 +51,13 @@ export default async function VendorDashboard() {
 
   if (error || !stall) {
     console.error('Error fetching stall for user:', user.id, error);
-    // Redirect or show an error message if the vendor doesn't have a stall assigned
+    // In a real app, you might want to log the user out here or show a more specific error page
     return (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
             <h1 className="font-headline text-2xl">Error</h1>
-            <p>Could not find a stall associated with your account.</p>
-            <Button asChild variant="link"><Link href="/vendor/login">Logout</Link></Button>
+            <p className="text-muted-foreground">Could not find a stall associated with your account.</p>
+            <p className="text-muted-foreground mt-2 text-sm">Please contact support if you believe this is an error.</p>
+            <Button asChild variant="link" className="mt-4"><Link href="/vendor/login">Return to Login</Link></Button>
         </div>
     );
   }
