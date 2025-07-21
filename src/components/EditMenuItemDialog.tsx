@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, PlusCircle, AlertTriangle } from 'lucide-react';
+import { Trash2, PlusCircle, AlertTriangle, Save, X } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Combobox } from './ui/combobox';
@@ -208,38 +208,43 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
           </div>
         </fieldset>
         </ScrollArea>
-        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between">
-          {!isNew ? (
-             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive" disabled={isPending}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Item
+        <DialogFooter className="flex-row justify-between w-full">
+            <div>
+            {!isNew && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" size="icon" disabled={isPending}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete Item</span>
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the menu item from your records.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            </div>
+            <div className="flex gap-2">
+                <DialogClose asChild>
+                    <Button type="button" variant="outline" size="icon" disabled={isPending}>
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Cancel</span>
                     </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the menu item
-                            from your records.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-          ) : <div></div>}
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <DialogClose asChild>
-                <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
-            </DialogClose>
-            <Button type="submit" onClick={handleSave} disabled={isPending}>
-                {isPending ? 'Saving...' : 'Save changes'}
-            </Button>
-          </div>
+                </DialogClose>
+                <Button type="submit" size="icon" onClick={handleSave} disabled={isPending}>
+                    <Save className="h-4 w-4" />
+                     <span className="sr-only">Save changes</span>
+                </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
