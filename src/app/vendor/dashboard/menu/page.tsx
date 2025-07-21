@@ -1,225 +1,78 @@
 
-'use client'
+'use server';
 
-import { useState, useMemo } from 'react'
-import Image from 'next/image'
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { PlusCircle, Pencil } from 'lucide-react'
-import { stalls } from '@/lib/data' 
-import type { Stall, MenuItem, MenuCategory } from '@/lib/types'
-import { EditMenuItemDialog } from '@/components/EditMenuItemDialog'
+import { Suspense } from 'react';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { MenuManagement } from '@/components/MenuManagement';
+import type { MenuItem } from '@/lib/types';
 
+async function fetchVendorData() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-// Let's assume the logged-in vendor is for 'Gopal Locho' (stall 's1')
-const VENDOR_STALL_ID = 's1';
-
-const getInitialStallData = (): Stall | undefined => {
-    const stall = stalls.find(s => s.id === VENDOR_STALL_ID);
-    if (!stall) return undefined;
-
-    // Ensure all items have a category property
-    const menuWithCategories = stall.menu.map(category => ({
-        ...category,
-        items: category.items.map(item => ({
-            ...item,
-            category: category.title
-        }))
-    }));
-    
-    return { ...stall, menu: menuWithCategories };
-};
-
-export default function VendorMenuPage() {
-  const [stallData, setStallData] = useState<Stall | undefined>(getInitialStallData());
-  const [editingItem, setEditingItem] = useState<Partial<MenuItem> & { isNew?: boolean } | null>(null);
-
-  const menuItemsByCategory = useMemo(() => {
-    if (!stallData) return {};
-    
-    const allItems = stallData.menu.flatMap(cat => cat.items);
-    
-    return allItems.reduce((acc, item) => {
-        const category = item.category || 'Uncategorized';
-        if (!acc[category]) {
-            acc[category] = [];
-        }
-        acc[category].push(item);
-        return acc;
-    }, {} as Record<string, MenuItem[]>);
-
-  }, [stallData]);
-
-  const allCategories = useMemo(() => {
-    return Object.keys(menuItemsByCategory);
-  }, [menuItemsByCategory]);
-
-
-  if (!stallData) {
-    return <div>Loading...</div>; // Or an error message
+  if (!user) {
+    redirect('/vendor/login');
   }
 
-  const handleAvailabilityChange = (itemId: string, newAvailability: boolean) => {
-    console.log(`Setting item ${itemId} to ${newAvailability ? 'available' : 'sold out'}`);
+  const { data: stall, error: stallError } = await supabase
+    .from('stalls')
+    .select('id, name')
+    .eq('owner_id', user.id)
+    .single();
+
+  if (stallError || !stall) {
+    console.error('Error fetching stall:', stallError);
+    // You might want a better error page here
+    return { user: null, stall: null, menuItems: [] };
+  }
+
+  const { data: menuItems, error: menuItemsError } = await supabase
+    .from('menu_items')
+    .select('*, stall_id')
+    .eq('stall_id', stall.id)
+    .order('category, name');
     
-    setStallData(prevStall => {
-        if (!prevStall) return prevStall;
-        
-        const newMenu = prevStall.menu.map(category => ({
-            ...category,
-            items: category.items.map(item => 
-                item.id === itemId ? { ...item, available: newAvailability } : item
-            )
-        }));
+  if (menuItemsError) {
+    console.error('Error fetching menu items:', menuItemsError);
+    return { user, stall, menuItems: [] };
+  }
 
-        return { ...prevStall, menu: newMenu };
-    });
-  };
+  // The DB returns snake_case, the frontend expects camelCase for some fields
+  const formattedMenuItems = menuItems.map(item => ({
+    ...item,
+    imageUrl: item.image_url,
+    orders: item.orders_count,
+  })) as MenuItem[];
 
-  const handleEditItem = (item: MenuItem) => {
-    setEditingItem(item);
-  };
+  return { user, stall, menuItems: formattedMenuItems };
+}
 
-  const handleAddNewItem = () => {
-    setEditingItem({
-        id: `m-${Date.now()}`, // temp ID
-        name: '',
-        price: 0,
-        description: '',
-        category: allCategories[0] || '',
-        imageUrl: 'https://placehold.co/400x300.png',
-        rating: 0,
-        orders: 0,
-        isNew: true,
-        customizations: [],
-    });
-  };
-  
-  const handleSaveChanges = (updatedItem: Partial<MenuItem>) => {
-    console.log("Saving changes for item:", updatedItem);
-    
-    setStallData(prevStall => {
-        if (!prevStall) return prevStall;
-        
-        const isNew = !prevStall.menu.flatMap(c => c.items).some(i => i.id === updatedItem.id);
-        const targetCategoryTitle = updatedItem.category || 'Uncategorized';
+function MenuPageSkeleton() {
+    return (
+        <div className="flex items-center justify-between">
+            <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
+            <div className="h-10 w-36 rounded-md bg-gray-200 animate-pulse" />
+        </div>
+    );
+}
 
-        let newMenu = [...prevStall.menu];
-        
-        // Find or create the target category
-        let targetCategory = newMenu.find(c => c.title === targetCategoryTitle);
-        if (!targetCategory) {
-            targetCategory = { title: targetCategoryTitle, items: [] };
-            newMenu.push(targetCategory);
-        }
 
-        // Remove item from its old category if it's not a new item and category has changed
-        if (!isNew) {
-           newMenu = newMenu.map(c => ({
-               ...c,
-               items: c.items.filter(i => i.id !== updatedItem.id)
-           }));
-        }
+export default async function VendorMenuPage() {
+  const { stall, menuItems } = await fetchVendorData();
 
-        // Add or update the item in the target category
-        const itemIndex = targetCategory.items.findIndex(i => i.id === updatedItem.id);
-        if (itemIndex > -1) {
-            targetCategory.items[itemIndex] = updatedItem as MenuItem;
-        } else {
-            targetCategory.items.push(updatedItem as MenuItem);
-        }
-
-        // Clean up empty categories
-        newMenu = newMenu.filter(c => c.items.length > 0);
-
-        return { ...prevStall, menu: newMenu };
-    });
-
-    setEditingItem(null);
+  if (!stall) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+        <h1 className="font-headline text-2xl">Stall Not Found</h1>
+        <p className="text-muted-foreground">We couldn't find a stall associated with your account.</p>
+      </div>
+    );
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
-        <Button onClick={handleAddNewItem}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add New Item
-        </Button>
-      </div>
-
-      <Accordion type="multiple" defaultValue={allCategories} className="w-full mt-4 space-y-4">
-        {Object.entries(menuItemsByCategory).map(([categoryTitle, items]) => (
-          <AccordionItem key={categoryTitle} value={categoryTitle} className="border rounded-lg bg-card">
-            <div className="flex w-full items-center justify-between p-4">
-               <AccordionTrigger className="p-0 hover:no-underline font-headline text-xl flex-1 text-left">
-                  {categoryTitle}
-              </AccordionTrigger>
-               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-50 cursor-not-allowed">
-                  <Pencil className="h-4 w-4" />
-                  <span className="sr-only">Edit category name</span>
-              </Button>
-            </div>
-            <AccordionContent className="p-4 pt-0">
-                <div className="space-y-4">
-                    {items.map((item: MenuItem) => (
-                        <Card key={item.id}>
-                            <CardContent className="flex items-center gap-4 p-4">
-                                <Image 
-                                    src={item.imageUrl} 
-                                    alt={item.name} 
-                                    width={80} 
-                                    height={80} 
-                                    className="h-20 w-20 rounded-md object-cover bg-muted"
-                                    data-ai-hint="food item"
-                                />
-                                <div className="flex-grow">
-                                    <h4 className="font-semibold">{item.name}</h4>
-                                    <p className="text-sm text-primary font-bold">₹{item.price.toFixed(2)}</p>
-                                     <div className="flex items-center space-x-2 mt-2">
-                                        <Switch 
-                                            id={`available-${item.id}`} 
-                                            checked={item.available !== false} // Default to available if undefined
-                                            onCheckedChange={(checked) => handleAvailabilityChange(item.id, checked)}
-                                        />
-                                        <Label htmlFor={`available-${item.id}`} className="text-xs text-muted-foreground">
-                                            {item.available !== false ? 'Available' : 'Sold Out'}
-                                        </Label>
-                                    </div>
-                                </div>
-                                <Button variant="outline" size="sm" onClick={() => handleEditItem(item)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-      
-      {editingItem && (
-        <EditMenuItemDialog 
-            item={editingItem}
-            allCategories={allCategories}
-            open={!!editingItem} 
-            onOpenChange={(open) => !open && setEditingItem(null)}
-            onSave={handleSaveChanges}
-        />
-      )}
-    </>
+    <Suspense fallback={<MenuPageSkeleton />}>
+        <MenuManagement initialMenuItems={menuItems} stallId={stall.id} />
+    </Suspense>
   );
 }

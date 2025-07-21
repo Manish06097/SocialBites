@@ -1,4 +1,5 @@
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -16,16 +17,20 @@ export interface MenuCategory {
 }
 
 export interface MenuItem {
-  id: string;
+  id: string; // uuid from db
+  stall_id: string;
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
+  category: string;
+  imageUrl: string; // from image_url in db
+  available: boolean;
+  customizations: Customization[] | null;
   rating: number;
-  orders: number;
-  available?: boolean;
-  customizations: Customization[]; // Stored as JSONB in the DB, array in the app
-  category?: string;
+  orders: number; // from orders_count in db
+  created_at?: string;
+  updated_at?: string;
+  isNew?: boolean; // client-side flag
 }
 
 export interface Customization {

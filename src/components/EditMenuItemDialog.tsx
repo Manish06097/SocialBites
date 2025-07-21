@@ -11,15 +11,27 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, PlusCircle } from 'lucide-react';
+import { Trash2, PlusCircle, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Combobox } from './ui/combobox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface EditMenuItemDialogProps {
   item: Partial<MenuItem>;
@@ -27,9 +39,11 @@ interface EditMenuItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (updatedItem: Partial<MenuItem>) => void;
+  onDelete: (itemId: string) => void;
+  isPending: boolean;
 }
 
-export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, onSave }: EditMenuItemDialogProps) {
+export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, onSave, onDelete, isPending }: EditMenuItemDialogProps) {
   const [editedItem, setEditedItem] = useState(item);
 
   useEffect(() => {
@@ -84,6 +98,12 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
   const handleSave = () => {
     onSave(editedItem);
   };
+
+  const handleDelete = () => {
+      if(editedItem.id) {
+          onDelete(editedItem.id);
+      }
+  }
   
   const isNew = 'isNew' in item && item.isNew;
 
@@ -97,15 +117,15 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
-        <div className="space-y-6 py-4">
+        <fieldset disabled={isPending} className="space-y-6 py-4 group">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="name">Item Name</Label>
-                <Input id="name" value={editedItem.name} onChange={(e) => handleFieldChange('name', e.target.value)} />
+                <Input id="name" value={editedItem.name || ''} onChange={(e) => handleFieldChange('name', e.target.value)} />
             </div>
              <div className="space-y-2">
               <Label htmlFor="price">Base Price (₹)</Label>
-              <Input id="price" type="number" value={editedItem.price} onChange={(e) => handleFieldChange('price', Number(e.target.value))} />
+              <Input id="price" type="number" value={editedItem.price || 0} onChange={(e) => handleFieldChange('price', Number(e.target.value))} />
             </div>
           </div>
 
@@ -124,7 +144,7 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={editedItem.description}
+              value={editedItem.description || ''}
               onChange={(e) => handleFieldChange('description', e.target.value)}
               rows={3}
             />
@@ -186,11 +206,40 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
                 </Button>
              </div>
           </div>
-        </div>
+        </fieldset>
         </ScrollArea>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" onClick={handleSave}>Save changes</Button>
+        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between">
+          {!isNew ? (
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" disabled={isPending}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Item
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the menu item
+                            from your records.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          ) : <div></div>}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+            </DialogClose>
+            <Button type="submit" onClick={handleSave} disabled={isPending}>
+                {isPending ? 'Saving...' : 'Save changes'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
