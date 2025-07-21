@@ -1,5 +1,5 @@
 
-'use client'
+'use server';
 
 import {
   Card,
@@ -7,25 +7,49 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { QrCode, Image as ImageIcon, Save, LogOut } from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { signOut } from '../../actions'
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { QrCode, Image as ImageIcon, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { signOut } from '../../actions';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { updateStallDetails } from './actions';
+import { SubmitButton } from './submit-button';
 
-export default function VendorProfilePage() {
+export default async function VendorProfilePage() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/vendor/login');
+  }
+
+  const { data: stall, error } = await supabase
+    .from('stalls')
+    .select('id, name, tags, logo_url, banner_url')
+    .eq('owner_id', user.id)
+    .single();
+
+  if (error || !stall) {
+    console.error('Error fetching stall for user:', user.id, error);
+    return (
+        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+            <h1 className="font-headline text-2xl">Error</h1>
+            <p className="text-muted-foreground">Could not find a stall associated with your account.</p>
+        </div>
+    );
+  }
+
   return (
-    <>
+    <form action={updateStallDetails}>
+      <input type="hidden" name="stallId" value={stall.id} />
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-lg font-semibold md:text-2xl">Profile</h1>
-        <Button>
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
-        </Button>
+        <SubmitButton />
       </div>
       <div className="grid gap-6 mt-4">
         <Card>
@@ -36,11 +60,11 @@ export default function VendorProfilePage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="stall-name">Stall Name</Label>
-              <Input id="stall-name" defaultValue="Gopal Locho" />
+              <Input id="stall-name" name="stallName" defaultValue={stall.name || ''} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="stall-tags">Tags</Label>
-              <Input id="stall-tags" defaultValue="Gujarati, Snacks, Street Food" placeholder="e.g. Pizza, Italian, Fast Food" />
+              <Input id="stall-tags" name="tags" defaultValue={stall.tags?.join(', ') || ''} placeholder="e.g. Pizza, Italian, Fast Food" />
                <p className="text-xs text-muted-foreground">Comma-separated tags for cuisine type.</p>
             </div>
           </CardContent>
@@ -55,8 +79,8 @@ export default function VendorProfilePage() {
                 <div className="space-y-2">
                     <Label>Stall Logo (1:1 ratio)</Label>
                     <div className="flex items-center gap-4">
-                        <Image src="https://images.unsplash.com/photo-1707330069618-0dff8e80a6e8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y29tcGFueSUyMGxvZ298ZW58MHx8fHwxNzUyODk2OTI2fDA&ixlib=rb-4.1.0&q=80&w=1080" alt="Stall Logo" width={64} height={64} className="rounded-full bg-muted" />
-                        <Button variant="outline">
+                        <Image src={stall.logo_url || "https://placehold.co/100x100.png"} alt="Stall Logo" width={64} height={64} className="rounded-full bg-muted" data-ai-hint="company logo" />
+                        <Button variant="outline" disabled>
                             <ImageIcon className="mr-2 h-4 w-4" />
                             Change Logo
                         </Button>
@@ -65,8 +89,8 @@ export default function VendorProfilePage() {
                  <div className="space-y-2">
                     <Label>Stall Banner (2:1 ratio)</Label>
                     <div className="flex items-center gap-4">
-                         <Image src="https://images.unsplash.com/photo-1713699860139-1fa847f155b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxmb29kJTIwc3RhbGx8ZW58MHx8fHwxNzUyODk2OTI2fDA&ixlib=rb-4.1.0&q=80&w=1080" alt="Stall Banner" width={128} height={64} className="rounded-md bg-muted aspect-video object-cover" />
-                        <Button variant="outline">
+                         <Image src={stall.banner_url || "https://placehold.co/600x300.png"} alt="Stall Banner" width={128} height={64} className="rounded-md bg-muted aspect-video object-cover" data-ai-hint="food stall" />
+                        <Button variant="outline" disabled>
                              <ImageIcon className="mr-2 h-4 w-4" />
                             Change Banner
                         </Button>
@@ -96,15 +120,13 @@ export default function VendorProfilePage() {
                 <CardDescription>Log out of your vendor account.</CardDescription>
             </CardHeader>
             <CardContent>
-                <form action={signOut}>
-                    <Button variant="outline" className="w-full md:w-auto">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                    </Button>
-                </form>
+                <Button type="submit" variant="outline" className="w-full md:w-auto" formAction={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
             </CardContent>
         </Card>
       </div>
-    </>
+    </form>
   )
 }
