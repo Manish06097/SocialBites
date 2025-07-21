@@ -15,7 +15,7 @@ export default async function QrCodePage() {
 
   const { data: stall, error } = await supabase
     .from('stalls')
-    .select('id, name, "foodCourtId"')
+    .select('id, name, food_court_id')
     .eq('owner_id', user.id)
     .single();
 
@@ -34,7 +34,7 @@ export default async function QrCodePage() {
   const clientStall = {
     id: stall.id,
     name: stall.name,
-    foodCourtId: stall.foodCourtId,
+    foodCourtId: stall.food_court_id,
   };
 
   return (
