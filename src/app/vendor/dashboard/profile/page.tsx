@@ -50,7 +50,7 @@ export default function VendorProfilePage() {
             <CardHeader>
                 <CardTitle>Branding</CardTitle>
                 <CardDescription>Update your stall's logo and banner.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label>Stall Logo (1:1 ratio)</Label>
