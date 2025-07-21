@@ -13,6 +13,8 @@ import {
   LogOut,
   ClipboardList
 } from 'lucide-react'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -32,6 +34,13 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+
+  const signOut = async () => {
+    'use server';
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+    return redirect('/vendor/login');
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -65,12 +74,12 @@ export default function DashboardLayout({
             </nav>
           </div>
           <div className="mt-auto p-4">
-             <Button asChild size="sm" variant="ghost" className="w-full justify-start">
-              <Link href="/vendor/login">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Link>
-             </Button>
+             <form action={signOut}>
+                <Button type="submit" size="sm" variant="ghost" className="w-full justify-start">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
+             </form>
           </div>
         </div>
       </div>
