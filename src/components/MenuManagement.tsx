@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Card,
@@ -34,6 +34,10 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
+  useEffect(() => {
+    setMenuItems(initialMenuItems);
+  }, [initialMenuItems]);
+
   const menuItemsByCategory = useMemo(() => {
     return menuItems.reduce((acc, item) => {
         const category = item.category || 'Uncategorized';
@@ -205,4 +209,3 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
     </>
   );
 }
-
