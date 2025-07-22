@@ -21,6 +21,7 @@ export default function UserLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const redirect = searchParams.get('redirect');
   const successfulLoginRedirectPath = redirect || '/';
@@ -50,20 +51,30 @@ export default function UserLoginPage() {
     setLoading(false);
   };
   
-  const handleGuest = () => {
-    try {
-        const guestSession = {
-            sessionId: `guest-${Math.random().toString(36).substring(2, 9)}`,
-            tableId: tableId,
-            foodCourtId: foodCourtId,
-            // Set expiry to 1 hour from now
-            expiry: new Date().getTime() + 60 * 60 * 1000,
-        };
-        localStorage.setItem('guestSession', JSON.stringify(guestSession));
-    } catch (error) {
-        console.error("Could not save guest session to localStorage", error);
+  const handleGuest = async () => {
+    setGuestLoading(true);
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase.auth.signInAnonymously();
+    
+    if (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Guest Login Failed',
+            description: 'Could not create a guest session. Please try again.',
+        });
+    } else {
+        try {
+            if (tableId && foodCourtId) {
+                const tableInfo = { tableId, foodCourtId };
+                localStorage.setItem('tableInfo', JSON.stringify(tableInfo));
+            }
+        } catch (e) {
+            console.error("Could not save table info to localStorage", e);
+        }
+        router.push(successfulLoginRedirectPath);
+        router.refresh();
     }
-    router.push(successfulLoginRedirectPath);
+    setGuestLoading(false);
   };
 
   return (
@@ -85,7 +96,7 @@ export default function UserLoginPage() {
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+                disabled={loading || guestLoading}
               />
             </div>
             <div className="space-y-2">
@@ -96,10 +107,10 @@ export default function UserLoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                disabled={loading || guestLoading}
               />
             </div>
-            <Button type="submit" className="w-full font-bold" disabled={loading}>
+            <Button type="submit" className="w-full font-bold" disabled={loading || guestLoading}>
                {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
@@ -111,9 +122,8 @@ export default function UserLoginPage() {
                   <span className="bg-card px-2 text-muted-foreground">Or</span>
               </div>
           </div>
-          <Button variant="outline" className="w-full font-bold" onClick={handleGuest}>
-            <User className="mr-2 h-5 w-5" />
-            Continue as Guest
+          <Button variant="outline" className="w-full font-bold" onClick={handleGuest} disabled={loading || guestLoading}>
+            {guestLoading ? 'Starting...' : <><User className="mr-2 h-5 w-5" /> Continue as Guest</>}
           </Button>
            <div className="mt-4 text-center text-sm">
             Don't have an account?{' '}

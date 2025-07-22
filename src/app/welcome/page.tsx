@@ -7,31 +7,50 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, LogIn } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function WelcomePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { toast } = useToast();
+    const [guestLoading, setGuestLoading] = useState(false);
+
     const foodCourtId = searchParams.get('foodCourtId');
     const tableId = searchParams.get('table');
 
     const redirectUrl = '/';
     const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}&foodCourtId=${foodCourtId}&table=${tableId}`;
 
-    const handleGuest = () => {
+    const handleGuest = async () => {
+        setGuestLoading(true);
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signInAnonymously();
+
+        if (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Guest Login Failed',
+                description: 'Could not create a guest session. Please try again.',
+            });
+             setGuestLoading(false);
+            return;
+        }
+
         try {
-            const guestSession = {
-                sessionId: `guest-${Math.random().toString(36).substring(2, 9)}`,
-                tableId: tableId,
-                foodCourtId: foodCourtId,
-                // Set expiry to 1 hour from now
-                expiry: new Date().getTime() + 60 * 60 * 1000, 
-            };
-            localStorage.setItem('guestSession', JSON.stringify(guestSession));
-        } catch (error)
- {
-            console.error("Could not save guest session to localStorage", error);
+            if (tableId && foodCourtId) {
+                const tableInfo = {
+                    tableId,
+                    foodCourtId,
+                };
+                localStorage.setItem('tableInfo', JSON.stringify(tableInfo));
+            }
+        } catch (e) {
+            console.error("Could not save table info to localStorage", e);
         }
         router.push(redirectUrl);
+        router.refresh();
     };
 
     return (
@@ -43,12 +62,11 @@ export default function WelcomePage() {
                     <CardDescription>How would you like to proceed?</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                    <Button size="lg" className="w-full font-bold" onClick={handleGuest}>
-                        <User className="mr-2 h-5 w-5" />
-                        Continue as Guest
+                    <Button size="lg" className="w-full font-bold" onClick={handleGuest} disabled={guestLoading}>
+                        {guestLoading ? 'Starting...' : <><User className="mr-2 h-5 w-5" />Continue as Guest</>}
                     </Button>
                     <Link href={loginUrl}>
-                        <Button size="lg" variant="outline" className="w-full font-bold">
+                        <Button size="lg" variant="outline" className="w-full font-bold" disabled={guestLoading}>
                             <LogIn className="mr-2 h-5 w-5" />
                             Login / Sign Up
                         </Button>

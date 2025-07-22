@@ -11,11 +11,9 @@ import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
-interface GuestSession {
-  sessionId: string;
+interface TableInfo {
   tableId: string;
   foodCourtId: string;
-  expiry: number;
 }
 
 interface Profile {
@@ -24,7 +22,7 @@ interface Profile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [guestSession, setGuestSession] = useState<GuestSession | null>(null);
+  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,30 +35,32 @@ export default function ProfilePage() {
         
         if (user) {
             setUser(user);
-            const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', user.id)
-                .single();
+            if (!user.is_anonymous) {
+                const { data: profileData, error } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single();
 
-            if (error) {
-                console.error('Error fetching profile:', error);
-            } else {
-                setProfile(profileData);
+                if (error) {
+                    console.error('Error fetching profile:', error);
+                } else {
+                    setProfile(profileData);
+                }
             }
         } else {
-            try {
-                const sessionStr = localStorage.getItem('guestSession');
-                if (sessionStr) {
-                    setGuestSession(JSON.parse(sessionStr));
-                } else {
-                    router.replace('/scan');
-                }
-            } catch (error) {
-                console.error("Failed to parse guest session", error);
-                router.replace('/scan');
-            }
+            router.replace('/scan');
         }
+
+        try {
+            const tableInfoStr = localStorage.getItem('tableInfo');
+            if (tableInfoStr) {
+                setTableInfo(JSON.parse(tableInfoStr));
+            }
+        } catch (error) {
+            console.error("Failed to parse table info", error);
+        }
+
         setLoading(false);
     };
 
@@ -68,18 +68,15 @@ export default function ProfilePage() {
   }, [router]);
 
   const handleLogout = async () => {
-    if (user) {
-        const supabase = createSupabaseBrowserClient();
-        await supabase.auth.signOut();
-        router.push('/login');
-        router.refresh();
-    } else {
-        localStorage.removeItem('guestSession');
-        router.push('/scan');
-    }
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    localStorage.removeItem('tableInfo'); // Clear table info on logout
+    router.push('/scan');
+    router.refresh();
   };
-
-  const displayName = profile?.full_name || 'User';
+  
+  const isGuest = user?.is_anonymous;
+  const displayName = isGuest ? 'Guest User' : (profile?.full_name || 'User');
   const displayInitial = displayName.charAt(0).toUpperCase();
 
   if (loading) {
@@ -91,12 +88,15 @@ export default function ProfilePage() {
     <div className="container mx-auto max-w-2xl px-4 py-8 md:px-6">
       <div className="flex items-center gap-4">
         <Avatar className="h-20 w-20">
-          <AvatarFallback className="bg-primary/20 text-primary text-3xl">{user ? displayInitial : 'G'}</AvatarFallback>
+          <AvatarFallback className="bg-primary/20 text-primary text-3xl">{displayInitial}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="font-headline text-2xl font-bold">{user ? displayName : 'Guest User'}</h1>
+          <h1 className="font-headline text-2xl font-bold">{displayName}</h1>
           <p className="text-muted-foreground">
-            {guestSession ? `Currently at Table ${guestSession.tableId}` : (user ? user.email : 'No table selected')}
+            {isGuest 
+                ? (tableInfo ? `Currently at Table ${tableInfo.tableId}` : 'Welcome!')
+                : user?.email
+            }
           </p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </Link>
-                <div className={`flex items-center justify-between rounded-lg p-3 ${!user && 'cursor-not-allowed text-muted-foreground/50'}`}>
+                <div className={`flex items-center justify-between rounded-lg p-3 ${isGuest && 'cursor-not-allowed text-muted-foreground/50'}`}>
                     <div className="flex items-center gap-4">
                         <UserIcon className="h-5 w-5" />
                         <span className="font-medium">Account Details</span>

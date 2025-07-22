@@ -14,19 +14,20 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 function WelcomeMessage() {
   const [table, setTable] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const guestSessionStr = localStorage.getItem('guestSession');
-      if (guestSessionStr) {
-        const guestSession = JSON.parse(guestSessionStr);
-        setTable(guestSession.tableId);
+      const tableInfoStr = localStorage.getItem('tableInfo');
+      if (tableInfoStr) {
+        const tableInfo = JSON.parse(tableInfoStr);
+        setTable(tableInfo.tableId);
       }
     } catch (error) {
-      console.error("Could not parse guest session", error);
+      console.error("Could not parse table info", error);
     }
   }, []);
 
@@ -50,27 +51,37 @@ function HomePageContent() {
   const { selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
 
   useEffect(() => {
-    try {
-        const guestSessionStr = localStorage.getItem('guestSession');
-        if (guestSessionStr) {
-            const guestSession = JSON.parse(guestSessionStr);
-            if (guestSession.foodCourtId) {
-                const court = foodCourts.find(fc => fc.id === guestSession.foodCourtId);
+    const checkSessionAndRedirect = async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace('/scan');
+        return;
+      }
+      
+      try {
+        const tableInfoStr = localStorage.getItem('tableInfo');
+        if (tableInfoStr) {
+            const tableInfo = JSON.parse(tableInfoStr);
+            if (tableInfo.foodCourtId) {
+                const court = foodCourts.find(fc => fc.id === tableInfo.foodCourtId);
                 if (court && court.id !== selectedFoodCourt.id) {
                     setSelectedFoodCourt(court);
                 }
             }
         } else {
-             // If no session, redirect to scan page
-            router.replace('/scan');
-            return;
+             // If there's a session but no table info, something is off.
+             // This might happen if they close the tab and reopen.
+             // For now, let them stay but they won't have a table number.
+             // A better UX might be to prompt them to scan again.
         }
-    } catch(error) {
-        console.error("Could not read food court from guest session", error);
-        router.replace('/scan');
-        return;
-    }
-    setSessionChecked(true);
+      } catch(error) {
+          console.error("Could not read food court from table info", error);
+      }
+      setSessionChecked(true);
+    };
+    checkSessionAndRedirect();
   }, [selectedFoodCourt.id, setSelectedFoodCourt, router]);
 
   const stallsForCourt = useMemo(() => {

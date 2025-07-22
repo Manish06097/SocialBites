@@ -26,22 +26,6 @@ export default function RootLayout({
 }>) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    // Check for expired guest session on component mount
-    try {
-      const guestSessionStr = localStorage.getItem('guestSession');
-      if (guestSessionStr) {
-        const guestSession = JSON.parse(guestSessionStr);
-        if (new Date().getTime() > guestSession.expiry) {
-          localStorage.removeItem('guestSession');
-          console.log('Expired guest session cleared.');
-        }
-      }
-    } catch (error) {
-      console.error("Could not process guest session from localStorage", error);
-    }
-  }, []);
   
   // Define routes that should have a clean layout (no header/footer)
   const cleanLayoutRoutes = ['/scan', '/vendor', '/login', '/signup', '/welcome'];
