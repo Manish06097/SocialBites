@@ -11,18 +11,18 @@ import Logo from '@/components/Logo';
 export default function WelcomePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const foodCourtId = searchParams.get('foodCourtId');
+    const tableId = searchParams.get('table');
 
-    // The homepage will now read from localStorage, so we just redirect to '/'
     const redirectUrl = '/';
-    const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
+    const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}&foodCourtId=${foodCourtId}&table=${tableId}`;
 
     const handleGuest = () => {
         try {
             const guestSession = {
                 sessionId: `guest-${Math.random().toString(36).substring(2, 9)}`,
-                tableId: searchParams.get('table'),
-                foodCourtId: searchParams.get('foodCourtId'),
-                stallId: searchParams.get('stallId'),
+                tableId: tableId,
+                foodCourtId: foodCourtId,
                 // Set expiry to 1 hour from now
                 expiry: new Date().getTime() + 60 * 60 * 1000, 
             };
