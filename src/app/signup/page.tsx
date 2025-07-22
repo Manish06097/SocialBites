@@ -23,10 +23,8 @@ export default function UserSignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const redirect = searchParams.get('redirect');
-  const successfulSignupRedirectPath = redirect || '/';
-  const loginPath = redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login';
-
+  const loginPath = `/login?${searchParams.toString()}`;
+  
   const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (password !== confirmPassword) {

@@ -24,10 +24,12 @@ export default function UserLoginPage() {
   const [guestLoading, setGuestLoading] = useState(false);
 
   const redirect = searchParams.get('redirect');
-  const successfulLoginRedirectPath = redirect || '/';
-  const signupPath = redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup';
   const foodCourtId = searchParams.get('foodCourtId');
+  const stallId = searchParams.get('stallId');
   const tableId = searchParams.get('table');
+  
+  const successfulLoginRedirectPath = stallId ? `/stalls/${stallId}` : (redirect || '/');
+  const signupPath = `/signup?${searchParams.toString()}`;
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

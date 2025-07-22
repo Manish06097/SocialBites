@@ -18,10 +18,11 @@ export default function WelcomePage() {
     const [guestLoading, setGuestLoading] = useState(false);
 
     const foodCourtId = searchParams.get('foodCourtId');
+    const stallId = searchParams.get('stallId');
     const tableId = searchParams.get('table');
 
-    const redirectUrl = '/';
-    const loginUrl = `/login?redirect=${encodeURIComponent(redirectUrl)}&foodCourtId=${foodCourtId}&table=${tableId}`;
+    const redirectUrl = stallId ? `/stalls/${stallId}` : '/';
+    const loginUrl = `/login?${searchParams.toString()}`;
 
     const handleGuest = async () => {
         setGuestLoading(true);
