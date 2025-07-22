@@ -1,26 +1,31 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { foodCourts } from '@/lib/data';
 import type { FoodCourt } from '@/lib/types';
 
 interface FoodCourtContextType {
   foodCourts: FoodCourt[];
-  selectedFoodCourt: FoodCourt;
-  setSelectedFoodCourt: (court: FoodCourt) => void;
+  setFoodCourts: (courts: FoodCourt[]) => void;
+  selectedFoodCourt: FoodCourt | null;
+  setSelectedFoodCourt: (court: FoodCourt | null) => void;
 }
 
 const FoodCourtContext = createContext<FoodCourtContextType | undefined>(undefined);
 
 export const FoodCourtProvider = ({ children }: { children: ReactNode }) => {
-  const [selectedFoodCourt, setSelectedFoodCourt] = useState<FoodCourt>(foodCourts[0]);
+  const [foodCourts, setFoodCourts] = useState<FoodCourt[]>([]);
+  const [selectedFoodCourt, setSelectedFoodCourt] = useState<FoodCourt | null>(null);
 
-  const handleSetSelectedFoodCourt = useCallback((court: FoodCourt) => {
+  const handleSetSelectedFoodCourt = useCallback((court: FoodCourt | null) => {
     setSelectedFoodCourt(court);
   }, []);
 
+  const handleSetFoodCourts = useCallback((courts: FoodCourt[]) => {
+    setFoodCourts(courts);
+  }, []);
+
   return (
-    <FoodCourtContext.Provider value={{ foodCourts, selectedFoodCourt, setSelectedFoodCourt: handleSetSelectedFoodCourt }}>
+    <FoodCourtContext.Provider value={{ foodCourts, setFoodCourts: handleSetFoodCourts, selectedFoodCourt, setSelectedFoodCourt: handleSetSelectedFoodCourt }}>
       {children}
     </FoodCourtContext.Provider>
   );

@@ -9,7 +9,7 @@ export interface Stall {
   rating: number;
   tags: string[];
   menu: MenuCategory[];
-  foodCourtId: string;
+  food_court_id: string;
   owner_id: string;
   created_at?: string;
   updated_at?: string;
@@ -51,7 +51,7 @@ export interface CustomizationOption {
 export interface CartItem {
   id: string; // combination of menuItemId and customizations
   menuItem: MenuItem;
-  stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>;
+  stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>;
   quantity: number;
   customizationChoices?: { [title: string]: string | string[] };
   specialInstructions?: string;

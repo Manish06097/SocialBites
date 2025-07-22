@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { notFound, useParams } from 'next/navigation';
-import { getStallById } from '@/lib/data';
+import { getStallWithMenuItems } from '@/lib/supabase/queries';
 import type { MenuItem, Stall } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, Flame } from 'lucide-react';
@@ -16,8 +16,47 @@ export default function StallPage() {
   const params = useParams();
   const stallId = Array.isArray(params.stallId) ? params.stallId[0] : params.stallId;
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  
-  const stall = getStallById(stallId);
+  const [stall, setStall] = useState<Stall | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStallData() {
+      if (!stallId) {
+        notFound();
+        return;
+      }
+      setLoading(true);
+      const fetchedStall = await getStallWithMenuItems(stallId);
+      setStall(fetchedStall);
+      setLoading(false);
+    }
+    fetchStallData();
+  }, [stallId]);
+
+  if (loading) {
+    return (
+      <div className="w-full">
+        <Skeleton className="relative h-48 w-full md:h-64" />
+        <div className="container relative mx-auto px-4 md:px-6">
+          <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
+            <Skeleton className="h-24 w-24 rounded-full border-4 border-background bg-card md:h-32 md:w-32" />
+            <div className="pb-2 space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
+          <Skeleton className="h-10 w-full" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!stall) {
     notFound();
@@ -33,7 +72,7 @@ export default function StallPage() {
          <div className="relative">
             <div className="relative h-48 w-full md:h-64">
               <Image
-                src={stall.bannerUrl}
+                src={stall.banner_url}
                 alt={`${stall.name} banner`}
                 fill
                 style={{objectFit: 'cover'}}
@@ -45,7 +84,7 @@ export default function StallPage() {
              <div className="container relative mx-auto px-4 md:px-6">
                 <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
                      <Image
-                        src={stall.logoUrl}
+                        src={stall.logo_url}
                         alt={`${stall.name} logo`}
                         width={96}
                         height={96}
@@ -57,7 +96,7 @@ export default function StallPage() {
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white">
                         <div className="flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 backdrop-blur-sm">
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-semibold">{stall.rating.toFixed(1)}</span>
+                            <span className="font-semibold">{stall.rating?.toFixed(1) || 'N/A'}</span>
                         </div>
                         <div className="hidden items-center gap-2 sm:flex">
                           <span className="hidden sm:inline">•</span>
@@ -120,7 +159,7 @@ export default function StallPage() {
       {selectedItem && (
         <MenuItemDialog 
             item={selectedItem} 
-            stall={{id: stall.id, name: stall.name, foodCourtId: stall.foodCourtId}} 
+            stall={{id: stall.id, name: stall.name, food_court_id: stall.food_court_id}} 
             open={!!selectedItem} 
             onOpenChange={(open) => !open && setSelectedItem(null)}
         />

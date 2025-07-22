@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useState, useMemo, Suspense, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { stalls, trendingItems, foodCourts } from '@/lib/data';
-import type { Stall } from '@/lib/types';
+import type { Stall, FoodCourt, TrendingItem } from '@/lib/types';
 import StallCard from '@/components/StallCard';
 import { Input } from '@/components/ui/input';
 import { Search, UtensilsCrossed } from 'lucide-react';
@@ -14,7 +13,9 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getStalls, getFoodCourts } from '@/lib/supabase/queries';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { trendingItems } from '@/lib/data'; // Keep trending items for now
 
 function WelcomeMessage() {
   const [table, setTable] = useState<string | null>(null);
@@ -45,65 +46,108 @@ function WelcomeMessage() {
 
 function HomePageContent() {
   const router = useRouter();
-  const [sessionChecked, setSessionChecked] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>('All');
-  const { selectedFoodCourt, setSelectedFoodCourt } = useFoodCourt();
+  const { selectedFoodCourt, setSelectedFoodCourt, setFoodCourts } = useFoodCourt();
+  const [allStalls, setAllStalls] = useState<Stall[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true); // New loading state for overall content
+  const [sessionChecked, setSessionChecked] = useState(false);
 
+  // Effect to fetch food courts and set initial selected food court
   useEffect(() => {
-    const checkSessionAndRedirect = async () => {
+    const initializeFoodCourts = async () => {
+      setLoadingContent(true);
+      try {
+        const fetchedFoodCourts = await getFoodCourts();
+        setFoodCourts(fetchedFoodCourts); // Update food courts in context
+
+        let initialFoodCourt: FoodCourt | null = null;
+        const tableInfoStr = localStorage.getItem('tableInfo');
+        if (tableInfoStr) {
+          const tableInfo = JSON.parse(tableInfoStr);
+          if (tableInfo.foodCourtId) {
+            initialFoodCourt = fetchedFoodCourts.find(fc => fc.id === tableInfo.foodCourtId) || null;
+          }
+        }
+
+        if (!initialFoodCourt && fetchedFoodCourts.length > 0) {
+          initialFoodCourt = fetchedFoodCourts[0]; // Default to the first food court if no table info or ID not found
+        }
+        setSelectedFoodCourt(initialFoodCourt);
+      } catch (error) {
+        console.error('Error initializing food courts:', error);
+      } finally {
+        // Do not set loadingContent to false here, as stalls still need to be fetched
+      }
+    };
+
+    initializeFoodCourts();
+  }, [setFoodCourts, setSelectedFoodCourt]);
+
+  // Effect to fetch stalls based on selectedFoodCourt and check session
+  useEffect(() => {
+    const fetchDataAndCheckSession = async () => {
+      if (!selectedFoodCourt) {
+        setLoadingContent(true); // Keep loading if food court not yet selected
+        return;
+      }
+
+      console.log('Fetching stalls for food court:', selectedFoodCourt.id);
+      setLoadingContent(true); // Set loading true when fetching stalls
+      try {
+        const fetchedStalls = await getStalls(selectedFoodCourt.id);
+        console.log('Fetched stalls:', fetchedStalls);
+        setAllStalls(fetchedStalls);
+      } catch (error) {
+        console.error('Error fetching stalls:', error);
+        setAllStalls([]); // Clear stalls on error
+      } finally {
+        setLoadingContent(false); // Set loading false after stalls are fetched
+        console.log('Finished fetching stalls. Loading state set to false.');
+      }
+
+      console.log('Checking session and redirect...');
       const supabase = createSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
+        console.log('No session found, redirecting to /scan');
         router.replace('/scan');
         return;
       }
-      
-      try {
-        const tableInfoStr = localStorage.getItem('tableInfo');
-        if (tableInfoStr) {
-            const tableInfo = JSON.parse(tableInfoStr);
-            if (tableInfo.foodCourtId) {
-                const court = foodCourts.find(fc => fc.id === tableInfo.foodCourtId);
-                if (court && court.id !== selectedFoodCourt.id) {
-                    setSelectedFoodCourt(court);
-                }
-            }
-        } else {
-             // If there's a session but no table info, something is off.
-             // This might happen if they close the tab and reopen.
-             // For now, let them stay but they won't have a table number.
-             // A better UX might be to prompt them to scan again.
-        }
-      } catch(error) {
-          console.error("Could not read food court from table info", error);
-      }
       setSessionChecked(true);
+      console.log('Session checked and set to true.');
     };
-    checkSessionAndRedirect();
-  }, [selectedFoodCourt.id, setSelectedFoodCourt, router]);
 
-  const stallsForCourt = useMemo(() => {
-    return stalls.filter(stall => stall.foodCourtId === selectedFoodCourt.id);
-  }, [selectedFoodCourt]);
+    fetchDataAndCheckSession();
+  }, [selectedFoodCourt, router]); // Re-run when selectedFoodCourt changes
 
   const allCuisines = useMemo(() => {
     const cuisines = new Set<string>();
-    stallsForCourt.forEach(stall => stall.tags.forEach(tag => cuisines.add(tag)));
+    allStalls.forEach(stall => stall.tags.forEach(tag => cuisines.add(tag)));
     return ['All', ...Array.from(cuisines)];
-  }, [stallsForCourt]);
+  }, [allStalls]);
 
   const filteredStalls = useMemo(() => {
-    return stallsForCourt.filter(stall => {
-      const matchesSearch = stall.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            stall.menu.some(cat => cat.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase())));
+    if (!selectedFoodCourt) return []; // Return empty if no food court selected yet
+    return allStalls.filter(stall => {
+      const matchesSearch = searchTerm === '' || 
+                            stall.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (stall.menu && stall.menu.some(cat => cat.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))));
       const matchesCuisine = !selectedCuisine || selectedCuisine === 'All' || stall.tags.includes(selectedCuisine);
       return matchesSearch && matchesCuisine;
     });
-  }, [searchTerm, selectedCuisine, stallsForCourt]);
+  }, [searchTerm, selectedCuisine, allStalls]);
 
-  if (!sessionChecked) {
+  useEffect(() => {
+    console.log('Current loadingContent:', loadingContent);
+    console.log('Current sessionChecked:', sessionChecked);
+    console.log('Current selectedFoodCourt:', selectedFoodCourt);
+    console.log('Current allStalls:', allStalls);
+    console.log('Current filteredStalls:', filteredStalls);
+  }, [loadingContent, sessionChecked, selectedFoodCourt, allStalls, filteredStalls]);
+
+  if (loadingContent || !sessionChecked || !selectedFoodCourt) {
     return (
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
             <Skeleton className="h-24 w-full" />

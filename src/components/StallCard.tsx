@@ -16,7 +16,7 @@ export default function StallCard({ stall }: StallCardProps) {
         <CardContent className="p-0">
           <div className="relative">
             <Image
-              src={stall.bannerUrl}
+              src={stall.banner_url}
               alt={`${stall.name} banner`}
               width={600}
               height={300}
@@ -25,7 +25,7 @@ export default function StallCard({ stall }: StallCardProps) {
             />
             <div className="absolute -bottom-8 left-4">
               <Image
-                src={stall.logoUrl}
+                src={stall.logo_url}
                 alt={`${stall.name} logo`}
                 width={64}
                 height={64}
@@ -38,7 +38,7 @@ export default function StallCard({ stall }: StallCardProps) {
             <h3 className="font-headline text-xl font-bold truncate">{stall.name}</h3>
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span>{stall.rating.toFixed(1)}</span>
+              <span>{stall.rating?.toFixed(1) || 'N/A'}</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {stall.tags.map((tag) => (
