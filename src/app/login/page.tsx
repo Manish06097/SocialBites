@@ -54,7 +54,11 @@ export default function UserLoginPage() {
   const handleGuest = async () => {
     setGuestLoading(true);
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInAnonymously();
+    const { error } = await supabase.auth.signInAnonymously({
+        options: {
+            data: {}
+        }
+    });
     
     if (error) {
         toast({
