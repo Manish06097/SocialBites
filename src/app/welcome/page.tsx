@@ -44,10 +44,11 @@ export default function WelcomePage() {
         }
 
         try {
-            if (tableId && foodCourtId) {
+            if (tableId && foodCourtId && stallId) {
                 const tableInfo = {
                     tableId,
                     foodCourtId,
+                    stallId,
                 };
                 localStorage.setItem('tableInfo', JSON.stringify(tableInfo));
             }
