@@ -11,13 +11,16 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import Confetti from 'react-dom-confetti';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
+import { createOrder } from '../orders/actions';
+import { Loader2 } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isPending, startTransition] = useTransition();
   
   // Client-side state to avoid hydration mismatch
   const [showConfetti, setShowConfetti] = useState(false);
@@ -29,44 +32,50 @@ export default function CheckoutPage() {
   }, [isSuccess]);
 
 
-  if (cartItems.length === 0 && !isSuccess) {
+  useEffect(() => {
     // Redirect if cart is empty and not on success screen
-    if (typeof window !== 'undefined') {
-        router.push('/');
+    if (cartItems.length === 0 && !isSuccess) {
+      router.replace('/');
     }
-    return (
-        <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-            <h2 className="font-headline text-2xl">Your cart is empty.</h2>
-            <p className="text-muted-foreground">Redirecting you to the homepage to find some yummy food!</p>
-        </div>
-    );
-  }
+  }, [cartItems, isSuccess, router]);
+
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const name = formData.get('name');
-    const phone = formData.get('phone');
-    const payment = formData.get('payment');
+    const paymentMethod = formData.get('payment') as string;
     
-    if (!name || !phone || !payment) {
-        toast({
-            variant: "destructive",
-            title: "Uh oh! Something is missing.",
-            description: "Please fill out all the required fields.",
-        });
-        return;
-    }
+    startTransition(async () => {
+        const tableInfoStr = localStorage.getItem('tableInfo');
+        if (!tableInfoStr) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Table information is missing. Please scan a QR code again.",
+            });
+            return;
+        }
+        const { tableId } = JSON.parse(tableInfoStr);
 
-    // This is where you would normally call an API to create the order.
-    // For now, we'll simulate a successful order.
-    const orderId = `SSB-${Math.floor(Math.random() * 90000) + 10000}`;
-    console.log("Order placed:", { orderId, name, phone, payment, items: cartItems, total: cartTotal });
-    
-    clearCart();
-    setIsSuccess(true);
-    // Don't redirect immediately, show the success message first.
-    setTimeout(() => router.push(`/orders/${orderId}`), 4000);
+        const result = await createOrder({
+            paymentMethod,
+            cartItems,
+            cartTotal,
+            tableId,
+        });
+
+        if (result.error) {
+            toast({
+                variant: "destructive",
+                title: "Failed to place order",
+                description: result.error,
+            });
+        } else if (result.orderId) {
+            clearCart();
+            setIsSuccess(true);
+            setTimeout(() => router.push(`/orders/${result.orderId}`), 4000);
+        }
+    });
   };
   
   const confettiConfig = {
@@ -99,7 +108,7 @@ export default function CheckoutPage() {
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6">
       <h1 className="mb-8 font-headline text-4xl font-bold">Checkout</h1>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
-        <div className="space-y-6">
+        <fieldset disabled={isPending} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Contact Information</CardTitle>
@@ -138,7 +147,7 @@ export default function CheckoutPage() {
               </RadioGroup>
             </CardContent>
           </Card>
-        </div>
+        </fieldset>
         <Card className="sticky top-24">
           <CardHeader>
             <CardTitle className="font-headline">Your Order</CardTitle>
@@ -178,8 +187,9 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" size="lg" className="w-full font-bold">
-              Place Order
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isPending ? 'Placing Order...' : 'Place Order'}
             </Button>
           </CardFooter>
         </Card>

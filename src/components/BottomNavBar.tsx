@@ -13,7 +13,7 @@ interface BottomNavBarProps {
 
 const navItems = [
   { href: '/', icon: Home, label: 'Stalls' },
-  { href: '/orders/SSB-12345', icon: ClipboardList, label: 'My Order' },
+  { href: '/orders', icon: ClipboardList, label: 'My Orders' },
   { href: '/profile', icon: User, label: 'Profile' }, 
 ];
 

@@ -1,133 +1,158 @@
-'use client';
+
+'use server';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { CheckCircle, ChefHat, Bike, PartyPopper } from 'lucide-react';
-import Image from 'next/image';
-import { useParams } from 'next/navigation';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import type { CartItem } from '@/lib/types';
-
-// Mock data for a single order, replace with actual data fetching
-const mockOrder = {
-  id: 'SSB-12345',
-  customerName: 'Rohan Patel',
-  paymentMethod: 'UPI',
-  totalAmount: 470,
-  orderDate: new Date(),
-  itemsByStall: {
-    s1: {
-      stallName: 'Gopal Locho',
-      items: [
-        {
-          id: 'm1-1-custom',
-          menuItem: { id: 'm1-1', name: 'Butter Locho', price: 80, imageUrl: 'https://placehold.co/400x300.png', description: '', rating: 0, orders: 0 },
-          quantity: 1,
-          totalPrice: 80,
-          status: 'Delivered',
-        },
-      ],
-    },
-    s2: {
-      stallName: "La Pino'z Pizza",
-      items: [
-        {
-          id: 'm2-2-custom',
-          menuItem: { id: 'm2-2', name: 'Farmhouse Pizza', price: 350, imageUrl: 'https://placehold.co/400x300.png', description: '', rating: 0, orders: 0 },
-          quantity: 1,
-          totalPrice: 350,
-          status: 'Preparing',
-        },
-      ],
-    },
-    s3: {
-      stallName: 'Wok on Fire',
-      items: [
-         {
-          id: 'm3-2-custom',
-          menuItem: { id: 'm3-2', name: 'Hakka Noodles', price: 220, imageUrl: 'https://placehold.co/400x300.png', description: '', rating: 0, orders: 0 },
-          quantity: 1,
-          totalPrice: 220,
-          status: 'Accepted',
-        }
-      ]
-    }
-  },
-};
-
-type OrderStatus = 'Accepted' | 'Preparing' | 'On the Way' | 'Delivered' | 'Rejected';
+import type { Order, OrderItem, OrderStatus } from '@/lib/types';
+import { getOrderById, getPastOrders } from '../actions';
+import { notFound } from 'next/navigation';
+import Image from 'next/image';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { format } from 'date-fns';
 
 const statusDisplayConfig: Record<OrderStatus, { text: string; className: string }> = {
-  Accepted: { text: 'Accepted', className: 'bg-blue-100 text-blue-800' },
-  Preparing: { text: 'Preparing', className: 'bg-orange-100 text-orange-800' },
-  'On the Way': { text: 'On the Way', className: 'bg-yellow-100 text-yellow-800' },
-  Delivered: { text: 'Delivered', className: 'bg-green-100 text-green-800' },
-  Rejected: { text: 'Rejected', className: 'bg-red-100 text-red-800' },
+  pending: { text: 'Pending', className: 'bg-gray-100 text-gray-800' },
+  accepted: { text: 'Accepted', className: 'bg-blue-100 text-blue-800' },
+  preparing: { text: 'Preparing', className: 'bg-orange-100 text-orange-800' },
+  ready_for_pickup: { text: 'Ready for Pickup', className: 'bg-yellow-100 text-yellow-800' },
+  completed: { text: 'Completed', className: 'bg-green-100 text-green-800' },
+  rejected: { text: 'Rejected', className: 'bg-red-100 text-red-800' },
 };
 
-// A helper to determine the overall status for a stall's items
-const getStallOverallStatus = (items: (CartItem & { status: OrderStatus })[]): OrderStatus => {
-  const statuses = items.map(item => item.status);
-  if (statuses.every(s => s === 'Delivered')) return 'Delivered';
-  if (statuses.some(s => s === 'Preparing')) return 'Preparing';
-  if (statuses.some(s => s === 'Accepted')) return 'Accepted';
-  return statuses[0] || 'Accepted'; // Fallback
-};
+function groupItemsByStall(items: OrderItem[]) {
+    return items.reduce((acc, item) => {
+        const stallId = item.stall_id;
+        if (!acc[stallId]) {
+            acc[stallId] = {
+                stallName: item.stalls.name,
+                items: [],
+            };
+        }
+        acc[stallId].items.push(item);
+        return acc;
+    }, {} as Record<string, { stallName: string; items: OrderItem[] }>);
+}
 
-export default function OrderTrackingPage() {
-  const params = useParams();
-  const orderId = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
+function OrderCard({order}: {order: Order}) {
+    const itemsByStall = groupItemsByStall(order.order_items);
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="font-headline text-3xl">Order #{order.display_id}</CardTitle>
+                        <CardDescription>
+                            Placed on {format(new Date(order.created_at), "MMMM d, yyyy 'at' h:mm a")}
+                        </CardDescription>
+                    </div>
+                    <Badge className={`border-transparent text-sm font-bold capitalize ${statusDisplayConfig[order.status].className}`}>{statusDisplayConfig[order.status].text}</Badge>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               {Object.entries(itemsByStall).map(([stallId, stallData]) => (
+                 <div key={stallId}>
+                    <h3 className="font-headline text-xl font-semibold mb-2">{stallData.stallName}</h3>
+                    <div className="space-y-4">
+                    {stallData.items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between gap-4 rounded-md border p-4">
+                            <div className="flex items-center gap-4">
+                                <Image 
+                                    src={item.menu_items.image_url} 
+                                    alt={item.menu_items.name} 
+                                    width={64} 
+                                    height={64} 
+                                    className="rounded-md bg-muted"
+                                    data-ai-hint="food item"
+                                />
+                                <div>
+                                    <p className="font-semibold">{item.menu_items.name}</p>
+                                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                                    <Badge variant="secondary" className={`capitalize mt-1 ${statusDisplayConfig[item.status].className}`}>{statusDisplayConfig[item.status].text}</Badge>
+                                </div>
+                            </div>
+                            <p className="font-bold">₹{item.total_price.toFixed(2)}</p>
+                        </div>
+                    ))}
+                    </div>
+                 </div>
+               ))}
+            </CardContent>
+        </Card>
+    )
+}
+
+function PastOrder({order}: {order: Order}) {
+    return (
+        <AccordionItem value={order.id}>
+            <AccordionTrigger className="hover:no-underline">
+                <div className="flex justify-between items-center w-full pr-4">
+                    <div>
+                        <p className="font-bold text-lg">Order #{order.display_id}</p>
+                        <p className="text-sm text-muted-foreground">{format(new Date(order.created_at), "MMMM d, yyyy")}</p>
+                    </div>
+                    <p className="font-bold text-lg">₹{order.total_amount.toFixed(2)}</p>
+                </div>
+            </AccordionTrigger>
+            <AccordionContent>
+                <div className="space-y-2">
+                {order.order_items.map(item => (
+                    <div key={item.id} className="flex items-center justify-between gap-4 p-2 rounded-md hover:bg-muted/50">
+                        <div className="flex items-center gap-3">
+                            <Image 
+                                src={item.menu_items.image_url} 
+                                alt={item.menu_items.name} 
+                                width={40} 
+                                height={40} 
+                                className="rounded-md bg-muted"
+                                data-ai-hint="food item"
+                            />
+                            <div>
+                                <p className="font-semibold">{item.menu_items.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.stalls.name} • Qty: {item.quantity}</p>
+                            </div>
+                        </div>
+                        <p className="font-semibold text-sm">₹{item.total_price.toFixed(2)}</p>
+                    </div>
+                ))}
+                </div>
+            </AccordionContent>
+        </AccordionItem>
+    )
+}
+
+export default async function OrderTrackingPage({ params }: { params: { orderId: string } }) {
+  const orderId = params.orderId;
+  const {order: currentOrder, error: currentOrderError} = await getOrderById(orderId);
   
-  // In a real app, you'd fetch the order using orderId
-  const order = mockOrder;
-  order.id = orderId;
+  if (currentOrderError || !currentOrder) {
+    notFound();
+  }
+  
+  const {orders: pastOrders, error: pastOrdersError} = await getPastOrders(currentOrder.id);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl">Track Your Order</CardTitle>
-          <CardDescription>
-            Order ID: <span className="font-mono font-semibold text-primary">{order.id}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-           <Accordion type="multiple" className="w-full">
-            {Object.entries(order.itemsByStall).map(([stallId, data]) => {
-                const overallStatus = getStallOverallStatus(data.items as any);
-                const statusConfig = statusDisplayConfig[overallStatus];
+    <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Latest Order</h2>
+        <OrderCard order={currentOrder} />
+      </div>
 
-                return (
-                    <AccordionItem value={stallId} key={stallId}>
-                        <AccordionTrigger className="font-headline text-2xl font-semibold hover:no-underline">
-                            <div className="flex items-center gap-4">
-                                <span>{data.stallName}</span>
-                                <Badge className={`border-transparent text-xs font-bold ${statusConfig.className}`}>{statusConfig.text}</Badge>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            {data.items.map(item => (
-                                <div key={item.id} className="mt-4 space-y-4 rounded-lg border p-4">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <Image src={item.menuItem.imageUrl} alt={item.menuItem.name} width={64} height={64} className="rounded-md" data-ai-hint="food item" />
-                                            <div>
-                                                <p className="font-semibold">{item.menuItem.name}</p>
-                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                                            </div>
-                                        </div>
-                                        <p className="font-bold">₹{item.totalPrice.toFixed(2)}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </AccordionContent>
-                    </AccordionItem>
-                )
-            })}
-           </Accordion>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Past Orders</h2>
+        <Card>
+            <CardContent className="p-0">
+                <Accordion type="multiple" className="w-full">
+                    {pastOrders && pastOrders.length > 0 ? (
+                        pastOrders.map(order => <PastOrder key={order.id} order={order} />)
+                    ) : (
+                        <div className="p-6 text-center text-muted-foreground">
+                            You have no past orders.
+                        </div>
+                    )}
+                </Accordion>
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

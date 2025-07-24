@@ -108,7 +108,7 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
             <div className="flex flex-col gap-1">
-                <Link href="/orders/SSB-12345" className="flex items-center justify-between rounded-lg p-3 hover:bg-accent/50">
+                <Link href="/orders" className="flex items-center justify-between rounded-lg p-3 hover:bg-accent/50">
                     <div className="flex items-center gap-4">
                         <Package className="h-5 w-5 text-primary" />
                         <span className="font-medium">Order History</span>

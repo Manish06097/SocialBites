@@ -1,6 +1,7 @@
 
 
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -66,20 +67,40 @@ export interface TrendingItem {
   price: number;
 }
 
+export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'completed' | 'rejected';
+
+export interface OrderItem {
+    id: string;
+    order_id: string;
+    stall_id: string;
+    menu_item_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    customizations: Customization[] | null;
+    special_instructions: string | null;
+    status: OrderStatus;
+    menu_items: {
+        name: string;
+        image_url: string;
+    };
+    stalls: {
+        name: string;
+    };
+}
+
 export interface Order {
   id: string;
-  customerName: string;
-  contactNumber: string;
-  paymentMethod: 'UPI' | 'COD';
-  itemsByStall: {
-    [stallId: string]: {
-      stallName: string;
-      items: (CartItem & { status: 'Accepted' | 'Preparing' | 'On the Way' | 'Delivered' | 'Rejected' })[];
-    }
-  };
-  totalAmount: number;
-  orderDate: Date;
+  display_id: string;
+  user_id: string;
+  food_court_id: string;
+  table_id: string | null;
+  total_amount: number;
+  status: OrderStatus;
+  created_at: string;
+  order_items: OrderItem[];
 }
+
 
 export interface FoodCourt {
     id: string;
