@@ -109,7 +109,37 @@ export async function getOrderById(orderId: string) {
     return { order: data as Order | null, error: error?.message || null };
 }
 
-export async function getPastOrders(currentOrderId: string) {
+export async function getLatestOrders() {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { orders: null, error: 'User not authenticated.' };
+    }
+    
+    // Calculate the timestamp for 1 hour ago
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+        .from('orders')
+        .select(`
+            *,
+            order_items (
+                *,
+                menu_items (name, image_url),
+                stalls (name)
+            )
+        `)
+        .eq('user_id', user.id)
+        .gt('created_at', oneHourAgo) // created in the last hour
+        .not('status', 'in', '("completed", "rejected")') // not yet delivered or rejected
+        .order('created_at', { ascending: false });
+
+    return { orders: data as Order[] | null, error: error?.message || null };
+}
+
+
+export async function getPastOrders(currentOrderIds: string[]) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -128,7 +158,7 @@ export async function getPastOrders(currentOrderId: string) {
             )
         `)
         .eq('user_id', user.id)
-        .neq('id', currentOrderId) // Exclude the current order
+        .not('id', 'in', `(${currentOrderIds.join(',')})`) // Exclude all current live orders
         .order('created_at', { ascending: false });
 
     return { orders: data as Order[] | null, error: error?.message || null };

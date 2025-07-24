@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Order, OrderItem, OrderStatus } from '@/lib/types';
-import { getOrderById, getPastOrders } from '../actions';
+import { getLatestOrders, getPastOrders } from '../actions';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -121,20 +121,31 @@ function PastOrder({order}: {order: Order}) {
 }
 
 export default async function OrderTrackingPage({ params }: { params: { orderId: string } }) {
-  const orderId = params.orderId;
-  const {order: currentOrder, error: currentOrderError} = await getOrderById(orderId);
+  const {orders: latestOrders, error: latestOrdersError} = await getLatestOrders();
   
-  if (currentOrderError || !currentOrder) {
-    notFound();
+  if (latestOrdersError) {
+    // Handle error appropriately, maybe show an error message
+    console.error(latestOrdersError);
   }
-  
-  const {orders: pastOrders, error: pastOrdersError} = await getPastOrders(currentOrder.id);
+
+  const latestOrderIds = latestOrders?.map(o => o.id) || [];
+  const {orders: pastOrders, error: pastOrdersError} = await getPastOrders(latestOrderIds);
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
       <div>
-        <h2 className="font-headline text-3xl font-bold mb-4">Latest Order</h2>
-        <OrderCard order={currentOrder} />
+        <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
+        {latestOrders && latestOrders.length > 0 ? (
+            <div className="space-y-6">
+                {latestOrders.map(order => <OrderCard key={order.id} order={order} />)}
+            </div>
+        ) : (
+             <Card>
+                <CardContent className="p-6 text-center text-muted-foreground">
+                    You have no active orders from the last hour.
+                </CardContent>
+             </Card>
+        )}
       </div>
 
       <div>
