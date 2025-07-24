@@ -24,25 +24,47 @@ export default function VendorLoginPage() {
     setLoading(true);
 
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
-    if (error) {
+    if (authError) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message || 'Please check your credentials and try again.',
+        description: authError.message || 'Please check your credentials and try again.',
       });
-    } else {
-      // On successful login, Supabase handles the session.
-      // The user will be redirected to the dashboard.
-      // We use router.replace to avoid the login page being in the browser history.
-      router.replace('/vendor/dashboard');
+      setLoading(false);
+      return;
     }
+
+    if (authData.user) {
+        // After successful login, check if the user is a stall owner
+        const { data: stall, error: stallError } = await supabase
+            .from('stalls')
+            .select('id')
+            .eq('owner_id', authData.user.id)
+            .maybeSingle();
+
+        if (stallError || !stall) {
+            // Not a vendor or error fetching stall, sign them out and show an error
+            await supabase.auth.signOut();
+            toast({
+                variant: 'destructive',
+                title: 'Access Denied',
+                description: 'This account is not associated with a vendor stall.',
+            });
+            setLoading(false);
+            return;
+        }
+
+        // If they own a stall, redirect to dashboard
+        router.replace('/vendor/dashboard');
+    }
+
+    // Fallback in case user data is not available, though unlikely
+    setLoading(false);
   };
 
   return (
