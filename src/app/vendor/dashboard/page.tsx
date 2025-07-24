@@ -26,13 +26,83 @@ import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import type { OrderItem } from '@/lib/types'
 
-const mockRecentOrders = [
-    { id: 'SSB-54321', customerName: 'Aisha Sharma', table: 'T05', total: 220, status: 'New' },
-    { id: 'SSB-54322', customerName: 'Vikram Singh', table: 'T02', total: 120, status: 'Preparing' },
-    { id: 'SSB-54323', customerName: 'Priya Mehta', table: 'T08', total: 80, status: 'New' },
-    { id: 'SSB-54324', customerName: 'Karan Desai', table: 'T01', total: 180, status: 'Ready' },
-]
+async function getDashboardData(stallId: string) {
+    const supabase = createSupabaseServerClient();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today in local time
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+
+    const todayIso = today.toISOString();
+    const tomorrowIso = tomorrow.toISOString();
+
+    // Fetch order items for the given stall created today
+    const { data: todayItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select('total_price, status, order_id, orders(contact_name, table_id)')
+        .eq('stall_id', stallId)
+        .gte('created_at', todayIso)
+        .lt('created_at', tomorrowIso);
+
+    if (itemsError) {
+        console.error('Error fetching dashboard data:', itemsError);
+        return {
+            revenue: 0,
+            totalOrders: 0,
+            newOrdersCount: 0,
+            recentOrders: [],
+        };
+    }
+    
+    const revenue = todayItems
+        .filter(item => item.status === 'completed')
+        .reduce((sum, item) => sum + item.total_price, 0);
+
+    const totalOrders = new Set(todayItems.map(item => item.order_id)).size;
+    
+    const newOrdersCount = todayItems.filter(item => item.status === 'pending').length;
+
+    // Fetch last 5 unique orders
+    const { data: recentOrderItems, error: recentOrdersError } = await supabase
+        .from('order_items')
+        .select('total_price, orders(display_id, contact_name, table_id)')
+        .eq('stall_id', stallId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+     if (recentOrdersError) {
+        console.error('Error fetching recent orders:', recentOrdersError);
+     }
+     
+    // Process recent orders to group by order and sum total
+    const recentOrdersMap = (recentOrderItems || []).reduce((acc, item) => {
+        if (!item.orders) return acc;
+        const { display_id, contact_name, table_id } = item.orders;
+        if (!acc[display_id]) {
+            acc[display_id] = {
+                id: display_id,
+                customerName: contact_name || 'Guest',
+                table: table_id || 'N/A',
+                total: 0
+            };
+        }
+        acc[display_id].total += item.total_price;
+        return acc;
+
+    }, {} as Record<string, {id: string; customerName: string; table: string; total: number}>);
+
+    const recentOrders = Object.values(recentOrdersMap);
+
+    return {
+        revenue,
+        totalOrders,
+        newOrdersCount,
+        recentOrders,
+    };
+}
+
 
 export default async function VendorDashboard() {
   const supabase = await createSupabaseServerClient();
@@ -45,13 +115,12 @@ export default async function VendorDashboard() {
 
   const { data: stall, error } = await supabase
     .from('stalls')
-    .select('name')
+    .select('id, name')
     .eq('owner_id', user.id)
     .single();
 
   if (error || !stall) {
     console.error('Error fetching stall for user:', user.id, error);
-    // In a real app, you might want to log the user out here or show a more specific error page
     return (
         <div className="flex flex-col items-center justify-center h-full p-4 text-center">
             <h1 className="font-headline text-2xl">Error</h1>
@@ -61,6 +130,8 @@ export default async function VendorDashboard() {
         </div>
     );
   }
+  
+  const { revenue, totalOrders, newOrdersCount, recentOrders } = await getDashboardData(stall.id);
 
 
   return (
@@ -79,21 +150,21 @@ export default async function VendorDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹1,250.00</div>
+            <div className="text-2xl font-bold">₹{revenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              +15.1% from yesterday
+              Based on completed orders today
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Orders</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+32</div>
+            <div className="text-2xl font-bold">+{totalOrders}</div>
              <p className="text-xs text-muted-foreground">
-              +12.2% from last hour
+              Total orders received today
             </p>
           </CardContent>
         </Card>
@@ -103,7 +174,7 @@ export default async function VendorDashboard() {
             <Bell className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
+            <div className="text-2xl font-bold">{newOrdersCount}</div>
             <p className="text-xs text-muted-foreground">
               Waiting for acceptance
             </p>
@@ -135,7 +206,7 @@ export default async function VendorDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockRecentOrders.map(order => (
+              {recentOrders.map(order => (
                 <TableRow key={order.id}>
                   <TableCell>
                     <div className="font-medium">{order.customerName}</div>

@@ -84,6 +84,11 @@ export interface OrderItem {
     stalls: {
         name: string;
     };
+    orders?: {
+        contact_name: string | null;
+        table_id: string | null;
+        display_id: string;
+    } | null;
 }
 
 export interface Order {
