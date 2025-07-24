@@ -62,7 +62,14 @@ async function getDashboardData(stallId: string) {
 
     const totalOrders = new Set(todayItems.map(item => item.order_id)).size;
     
-    const newOrdersCount = todayItems.filter(item => item.status === 'pending').length;
+    // Correctly count unique new orders
+    const newOrderIds = new Set(
+        todayItems
+            .filter(item => item.status === 'pending')
+            .map(item => item.order_id)
+    );
+    const newOrdersCount = newOrderIds.size;
+
 
     // Fetch last 5 unique orders
     const { data: recentOrderItems, error: recentOrdersError } = await supabase
