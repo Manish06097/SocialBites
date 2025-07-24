@@ -1,7 +1,4 @@
 
-
-
-
 export interface Stall {
   id: string;
   name: string;
