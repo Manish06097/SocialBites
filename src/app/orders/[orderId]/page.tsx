@@ -32,6 +32,14 @@ function groupItemsByStall(items: OrderItem[]) {
     }, {} as Record<string, { stallName: string; items: OrderItem[] }>);
 }
 
+function getShortDisplayId(displayId: string) {
+    const parts = displayId.split('-');
+    if (parts.length > 2) {
+        return `SSB-${parts[parts.length - 1]}`;
+    }
+    return displayId;
+}
+
 function OrderCard({order}: {order: Order}) {
     const itemsByStall = groupItemsByStall(order.order_items);
     const IST_TIMEZONE = 'Asia/Kolkata';
@@ -40,7 +48,7 @@ function OrderCard({order}: {order: Order}) {
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="font-headline text-3xl">Order #{order.display_id}</CardTitle>
+                        <CardTitle className="font-headline text-3xl">Order #{getShortDisplayId(order.display_id)}</CardTitle>
                         <CardDescription>
                             Placed on {formatInTimeZone(new Date(order.created_at), IST_TIMEZONE, "MMMM d, yyyy 'at' h:mm a")}
                         </CardDescription>
@@ -85,16 +93,16 @@ function PastOrder({order}: {order: Order}) {
     const IST_TIMEZONE = 'Asia/Kolkata';
     return (
         <AccordionItem value={order.id}>
-            <AccordionTrigger className="hover:no-underline">
-                <div className="flex justify-between items-center w-full pr-4">
+            <AccordionTrigger className="hover:no-underline p-4 w-full">
+                <div className="flex justify-between items-center w-full">
                     <div>
-                        <p className="font-bold text-lg">Order #{order.display_id}</p>
+                        <p className="font-bold text-lg">Order #{getShortDisplayId(order.display_id)}</p>
                         <p className="text-sm text-muted-foreground">{formatInTimeZone(new Date(order.created_at), IST_TIMEZONE, "MMMM d, yyyy")}</p>
                     </div>
                     <p className="font-bold text-lg">₹{order.total_amount.toFixed(2)}</p>
                 </div>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="px-4">
                 <div className="space-y-2">
                 {order.order_items.map(item => (
                     <div key={item.id} className="flex items-center justify-between gap-4 p-2 rounded-md hover:bg-muted/50">
