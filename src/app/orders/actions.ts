@@ -139,7 +139,7 @@ export async function getLatestOrders() {
 }
 
 
-export async function getPastOrders(currentOrderIds: string[]) {
+export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 0 }: { currentOrderIds: string[], limit?: number, offset?: number }) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -147,25 +147,7 @@ export async function getPastOrders(currentOrderIds: string[]) {
         return { orders: null, error: 'User not authenticated.' };
     }
     
-    // Guard against empty array which would cause a SQL error with `in ()`
-    if (currentOrderIds.length === 0) {
-         const { data, error } = await supabase
-            .from('orders')
-            .select(`
-                *,
-                order_items (
-                    *,
-                    menu_items (name, image_url),
-                    stalls (name)
-                )
-            `)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-        return { orders: data as Order[] | null, error: error?.message || null };
-    }
-
-
-    const { data, error } = await supabase
+    let query = supabase
         .from('orders')
         .select(`
             *,
@@ -175,9 +157,17 @@ export async function getPastOrders(currentOrderIds: string[]) {
                 stalls (name)
             )
         `)
-        .eq('user_id', user.id)
-        .not('id', 'in', `(${currentOrderIds.join(',')})`) // Exclude all current live orders
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
+    
+    if (currentOrderIds.length > 0) {
+        query = query.not('id', 'in', `(${currentOrderIds.join(',')})`);
+    }
+
+    query = query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+    const { data, error } = await query;
 
     return { orders: data as Order[] | null, error: error?.message || null };
 }
