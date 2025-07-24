@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import type { Order, OrderItem, OrderStatus } from '@/lib/types';
 import { getLatestOrders, getPastOrders } from '../actions';
-import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 const statusDisplayConfig: Record<OrderStatus, { text: string; className: string }> = {
   pending: { text: 'Pending', className: 'bg-gray-100 text-gray-800' },
@@ -35,6 +34,7 @@ function groupItemsByStall(items: OrderItem[]) {
 
 function OrderCard({order}: {order: Order}) {
     const itemsByStall = groupItemsByStall(order.order_items);
+    const IST_TIMEZONE = 'Asia/Kolkata';
     return (
         <Card>
             <CardHeader>
@@ -42,7 +42,7 @@ function OrderCard({order}: {order: Order}) {
                     <div>
                         <CardTitle className="font-headline text-3xl">Order #{order.display_id}</CardTitle>
                         <CardDescription>
-                            Placed on {format(new Date(order.created_at), "MMMM d, yyyy 'at' h:mm a")}
+                            Placed on {formatInTimeZone(new Date(order.created_at), IST_TIMEZONE, "MMMM d, yyyy 'at' h:mm a")}
                         </CardDescription>
                     </div>
                     <Badge className={`border-transparent text-sm font-bold capitalize ${statusDisplayConfig[order.status].className}`}>{statusDisplayConfig[order.status].text}</Badge>
@@ -82,13 +82,14 @@ function OrderCard({order}: {order: Order}) {
 }
 
 function PastOrder({order}: {order: Order}) {
+    const IST_TIMEZONE = 'Asia/Kolkata';
     return (
         <AccordionItem value={order.id}>
             <AccordionTrigger className="hover:no-underline">
                 <div className="flex justify-between items-center w-full pr-4">
                     <div>
                         <p className="font-bold text-lg">Order #{order.display_id}</p>
-                        <p className="text-sm text-muted-foreground">{format(new Date(order.created_at), "MMMM d, yyyy")}</p>
+                        <p className="text-sm text-muted-foreground">{formatInTimeZone(new Date(order.created_at), IST_TIMEZONE, "MMMM d, yyyy")}</p>
                     </div>
                     <p className="font-bold text-lg">₹{order.total_amount.toFixed(2)}</p>
                 </div>
