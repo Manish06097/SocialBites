@@ -132,7 +132,7 @@ export async function getLatestOrders() {
         `)
         .eq('user_id', user.id)
         .gt('created_at', oneHourAgo) // created in the last hour
-        .not('status', 'in', '("completed", "rejected")') // not yet delivered or rejected
+        .not('status', 'in', '(completed,rejected)') // not yet delivered or rejected
         .order('created_at', { ascending: false });
 
     return { orders: data as Order[] | null, error: error?.message || null };
@@ -146,6 +146,24 @@ export async function getPastOrders(currentOrderIds: string[]) {
     if (!user) {
         return { orders: null, error: 'User not authenticated.' };
     }
+    
+    // Guard against empty array which would cause a SQL error with `in ()`
+    if (currentOrderIds.length === 0) {
+         const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    *,
+                    menu_items (name, image_url),
+                    stalls (name)
+                )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+        return { orders: data as Order[] | null, error: error?.message || null };
+    }
+
 
     const { data, error } = await supabase
         .from('orders')
