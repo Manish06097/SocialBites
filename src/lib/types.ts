@@ -95,6 +95,8 @@ export interface Order {
   total_amount: number;
   status: OrderStatus;
   created_at: string;
+  contact_name: string | null;
+  contact_phone: string | null;
   order_items: OrderItem[];
 }
 

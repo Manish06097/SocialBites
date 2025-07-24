@@ -10,6 +10,8 @@ interface CreateOrderPayload {
     cartItems: CartItem[];
     cartTotal: number;
     tableId: string;
+    contactName: string;
+    contactPhone: string;
 }
 
 export async function createOrder(payload: CreateOrderPayload) {
@@ -37,6 +39,8 @@ export async function createOrder(payload: CreateOrderPayload) {
             table_id: payload.tableId,
             total_amount: payload.cartTotal,
             status: 'pending', // All orders start as pending
+            contact_name: payload.contactName,
+            contact_phone: payload.contactPhone,
         })
         .select('id')
         .single();

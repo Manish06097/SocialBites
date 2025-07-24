@@ -45,6 +45,8 @@ export default function CheckoutPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const paymentMethod = formData.get('payment') as string;
+    const contactName = formData.get('name') as string;
+    const contactPhone = formData.get('phone') as string;
     
     startTransition(async () => {
         const tableInfoStr = localStorage.getItem('tableInfo');
@@ -63,6 +65,8 @@ export default function CheckoutPage() {
             cartItems,
             cartTotal,
             tableId,
+            contactName,
+            contactPhone,
         });
 
         if (result.error) {
