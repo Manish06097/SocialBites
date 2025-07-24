@@ -27,7 +27,10 @@ export async function createOrder(payload: CreateOrderPayload) {
     }
 
     const foodCourtId = payload.cartItems[0].stall.food_court_id;
-    const displayId = `SSB-${Math.floor(Math.random() * 90000) + 10000}`;
+    // New, more robust display_id generation
+    const timestamp = Date.now().toString(36); // a base-36 string of the current time
+    const randomPart = Math.random().toString(36).substring(2, 7); // a 5-char random string
+    const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
 
     // 1. Create the main order
     const { data: orderData, error: orderError } = await supabase
