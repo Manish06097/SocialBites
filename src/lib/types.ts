@@ -80,10 +80,10 @@ export interface OrderItem {
     menu_items: {
         name: string;
         image_url: string;
-    };
+    } | null; // Changed to allow null as well, depending on join behavior
     stalls: {
         name: string;
-    };
+    } | null; // Changed to allow null as well, depending on join behavior
     orders?: {
         contact_name: string | null;
         table_id: string | null;

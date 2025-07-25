@@ -20,27 +20,18 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, Bike } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Order, OrderStatus } from '@/lib/types';
+import { getVendorStallId, getVendorOrders, updateOrderItemStatus } from '@/app/vendor/actions';
+import { useRouter } from 'next/navigation';
 
-type OrderStatus = 'new' | 'preparing' | 'ready' | 'completed';
-
-interface Order {
-  id: string;
-  customerName: string;
-  table: string;
-  status: OrderStatus;
-  items: { name: string; quantity: number }[];
-  total: number;
-  timestamp: Date;
-}
-
-const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (id: string, status: OrderStatus) => void }) => {
+const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
     const calculateTimeSince = () => {
-      const seconds = Math.floor((new Date().getTime() - new Date(order.timestamp).getTime()) / 1000);
+      const seconds = Math.floor((new Date().getTime() - new Date(order.created_at).getTime()) / 1000);
       if (seconds < 60) return 'Just now';
       const minutes = Math.floor(seconds / 60);
       if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -53,27 +44,40 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
         setTimeAgo(calculateTimeSince());
     }, 60000); // Update every minute
     return () => clearInterval(interval);
-  }, [order.timestamp]);
+  }, [order.created_at]);
+
+  // Determine the overall status of the order based on its items
+  const overallStatus: OrderStatus = order.order_items.every(item => item.status === 'completed')
+    ? 'completed'
+    : order.order_items.every(item => item.status === 'rejected')
+    ? 'rejected'
+    : order.order_items.some(item => item.status === 'ready_for_pickup')
+    ? 'ready_for_pickup'
+    : order.order_items.some(item => item.status === 'preparing')
+    ? 'preparing'
+    : order.order_items.some(item => item.status === 'accepted')
+    ? 'accepted'
+    : 'pending';
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
             <div>
-                 <CardTitle className="text-xl">Order #{order.id.split('-')[1]}</CardTitle>
-                 <CardDescription>From {order.customerName} at Table {order.table}</CardDescription>
+                 <CardTitle className="text-xl">Order #{order.display_id}</CardTitle>
+                 <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
             </div>
             <div className="text-right">
-                <p className="font-bold text-lg">₹{order.total.toFixed(2)}</p>
+                <p className="font-bold text-lg">₹{order.total_amount.toFixed(2)}</p>
                 {isClient ? <p className="text-xs text-muted-foreground">{timeAgo}</p> : <p className="text-xs text-muted-foreground">...</p>}
             </div>
         </div>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2">
-            {order.items.map((item, index) => (
-                <li key={index} className="flex justify-between">
-                    <span>{item.name}</span>
+            {order.order_items.map((item) => (
+                <li key={item.id} className="flex justify-between">
+                    <span>{item.menu_items?.name}</span>
                     <span className="font-mono">x{item.quantity}</span>
                 </li>
             ))}
@@ -81,34 +85,46 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
       </CardContent>
       <Separator />
       <CardFooter className="py-3 px-4">
-        {order.status === 'new' && (
+        {overallStatus === 'pending' && (
             <div className="w-full flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'completed')}>
+                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')}>
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                 </Button>
-                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
+                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Accept
                 </Button>
             </div>
         )}
-         {order.status === 'preparing' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready')}>
+        {overallStatus === 'accepted' && (
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
+                <Bike className="mr-2 h-4 w-4" />
+                Mark as Preparing
+            </Button>
+        )}
+        {overallStatus === 'preparing' && (
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')}>
                 <Bike className="mr-2 h-4 w-4" />
                 Mark as Ready
             </Button>
         )}
-        {order.status === 'ready' && (
+        {overallStatus === 'ready_for_pickup' && (
              <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'completed')}>
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Mark as Completed
             </Button>
         )}
-        {order.status === 'completed' && (
+        {overallStatus === 'completed' && (
             <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Order Completed
+            </p>
+        )}
+        {overallStatus === 'rejected' && (
+            <p className="text-sm text-red-600 font-medium flex items-center w-full justify-center">
+                <XCircle className="mr-2 h-4 w-4" />
+                Order Rejected
             </p>
         )}
       </CardFooter>
@@ -118,84 +134,48 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (i
 
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    // This ensures this code only runs on the client, preventing hydration mismatch
-    // by ensuring mock data (with dynamic timestamps) is only created client-side.
-    setIsClient(true);
-    const initialOrders: Order[] = [
-      {
-        id: 'SSB-54321',
-        customerName: 'Aisha Sharma',
-        table: 'T05',
-        status: 'new',
-        items: [
-          { name: 'Butter Locho', quantity: 2 },
-          { name: 'Khaman', quantity: 1 },
-        ],
-        total: 220,
-        timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
-      },
-      {
-        id: 'SSB-54322',
-        customerName: 'Vikram Singh',
-        table: 'T02',
-        status: 'preparing',
-        items: [
-          { name: 'Cheese Roll Locho', quantity: 1 },
-        ],
-        total: 120,
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      },
-      {
-        id: 'SSB-54323',
-        customerName: 'Priya Mehta',
-        table: 'T08',
-        status: 'new',
-        items: [
-          { name: 'Butter Locho', quantity: 1 },
-        ],
-        total: 80,
-        timestamp: new Date(Date.now() - 1 * 60 * 1000),
-      },
-      {
-        id: 'SSB-54324',
-        customerName: 'Karan Desai',
-        table: 'T01',
-        status: 'ready',
-        items: [
-          { name: 'Khaman', quantity: 3 },
-        ],
-        total: 180,
-        timestamp: new Date(Date.now() - 10 * 60 * 1000),
-      },
-      {
-        id: 'SSB-54325',
-        customerName: 'Sneha Patel',
-        table: 'T11',
-        status: 'completed',
-        items: [
-          { name: 'Butter Locho', quantity: 1 },
-          { name: 'Cheese Roll Locho', quantity: 1 },
-        ],
-        total: 200,
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      },
-    ];
-    setOrders(initialOrders);
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      const stallId = await getVendorStallId();
+      if (stallId) {
+        const fetchedOrders = await getVendorOrders(stallId);
+        setOrders(fetchedOrders);
+      } else {
+        console.error('Could not retrieve vendor stall ID.');
+        setOrders([]);
+      }
+      setIsLoading(false);
+    };
+
+    fetchOrders();
+    // Removed setInterval for continuous refreshing as per user feedback
   }, []);
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      // Find the order and update all its items
+      const orderToUpdate = orders.find(order => order.id === orderId);
+      if (orderToUpdate) {
+        for (const item of orderToUpdate.order_items) {
+          await updateOrderItemStatus(item.id, newStatus);
+        }
+        // Re-fetch orders to reflect the changes
+        const stallId = await getVendorStallId();
+        if (stallId) {
+          const updatedOrders = await getVendorOrders(stallId);
+          setOrders(updatedOrders);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+    }
   };
   
-  if (!isClient) {
-    // Render a skeleton or loading state on the server and initial client render
+  if (isLoading) {
     return (
         <>
             <div className="flex items-center justify-between">
@@ -203,14 +183,14 @@ export default function VendorOrdersPage() {
                 Order Management
                 </h1>
             </div>
-            <Tabs defaultValue="new" className="mt-4">
-              <TabsList className="grid w-full grid-cols-2 h-auto">
-                <TabsTrigger value="new">New</TabsTrigger>
+            <Tabs defaultValue="pending" className="mt-4">
+              <TabsList className="grid w-full grid-cols-4 h-auto">
+                <TabsTrigger value="pending">New</TabsTrigger>
                 <TabsTrigger value="preparing">Preparing</TabsTrigger>
-                <TabsTrigger value="ready">Ready</TabsTrigger>
+                <TabsTrigger value="ready_for_pickup">Ready</TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
               </TabsList>
-               <TabsContent value="new" className="mt-4">
+               <TabsContent value="pending" className="mt-4">
                   <p className="text-muted-foreground col-span-full text-center py-8">Loading orders...</p>
                </TabsContent>
             </Tabs>
@@ -218,10 +198,10 @@ export default function VendorOrdersPage() {
     )
   }
 
-  const newOrders = orders.filter(o => o.status === 'new');
-  const preparingOrders = orders.filter(o => o.status === 'preparing');
-  const readyOrders = orders.filter(o => o.status === 'ready');
-  const completedOrders = orders.filter(o => o.status === 'completed');
+  const pendingOrders = orders.filter(o => o.order_items.some(item => item.status === 'pending' || item.status === 'accepted'));
+  const preparingOrders = orders.filter(o => o.order_items.some(item => item.status === 'preparing'));
+  const readyOrders = orders.filter(o => o.order_items.some(item => item.status === 'ready_for_pickup'));
+  const completedOrders = orders.filter(o => o.order_items.every(item => item.status === 'completed' || item.status === 'rejected'));
 
   return (
     <>
@@ -230,22 +210,22 @@ export default function VendorOrdersPage() {
           Order Management
         </h1>
       </div>
-      <Tabs defaultValue="new" className="mt-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
-          <TabsTrigger value="new">
-            New <Badge variant="destructive" className="ml-2">{newOrders.length}</Badge>
+      <Tabs defaultValue="pending" className="mt-4">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="pending">
+            New <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="preparing">
             Preparing <Badge className="ml-2">{preparingOrders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="ready">
+          <TabsTrigger value="ready_for_pickup">
             Ready <Badge className="ml-2">{readyOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
-        <TabsContent value="new" className="mt-4">
+        <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {newOrders.length > 0 ? newOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
@@ -253,7 +233,7 @@ export default function VendorOrdersPage() {
              {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
-        <TabsContent value="ready" className="mt-4">
+        <TabsContent value="ready_for_pickup" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
              {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
           </div>
@@ -267,5 +247,3 @@ export default function VendorOrdersPage() {
     </>
   )
 }
-
-    
