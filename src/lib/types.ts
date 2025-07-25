@@ -1,4 +1,5 @@
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -65,6 +66,7 @@ export interface TrendingItem {
 }
 
 export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'completed' | 'rejected';
+export type PaymentStatus = 'pending' | 'completed' | 'failed';
 
 export interface OrderItem {
     id: string;
@@ -80,10 +82,10 @@ export interface OrderItem {
     menu_items: {
         name: string;
         image_url: string;
-    } | null; // Changed to allow null as well, depending on join behavior
+    } | null;
     stalls: {
         name: string;
-    } | null; // Changed to allow null as well, depending on join behavior
+    } | null;
     orders?: {
         contact_name: string | null;
         table_id: string | null;
@@ -103,6 +105,9 @@ export interface Order {
   contact_name: string | null;
   contact_phone: string | null;
   order_items: OrderItem[];
+  payment_method: 'upi' | 'cod';
+  payment_status: PaymentStatus;
+  payment_id: string | null;
 }
 
 

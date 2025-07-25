@@ -14,16 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 import Confetti from 'react-dom-confetti';
 import { useState, useEffect, useTransition } from 'react';
 import { createOrder } from '../orders/actions';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CreditCard } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isPending, startTransition] = useTransition();
   
-  // Client-side state to avoid hydration mismatch
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
     if (isSuccess) {
@@ -34,7 +34,6 @@ export default function CheckoutPage() {
 
 
   useEffect(() => {
-    // Redirect if cart is empty and not on success screen
     if (cartItems.length === 0 && !isSuccess) {
       router.replace('/');
     }
@@ -44,10 +43,14 @@ export default function CheckoutPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const paymentMethod = formData.get('payment') as string;
+    const paymentMethod = formData.get('payment') as 'upi' | 'cod';
     const contactName = formData.get('name') as string;
     const contactPhone = formData.get('phone') as string;
     
+    if (paymentMethod === 'upi') {
+        setIsProcessingPayment(true);
+    }
+
     startTransition(async () => {
         const tableInfoStr = localStorage.getItem('tableInfo');
         if (!tableInfoStr) {
@@ -56,6 +59,7 @@ export default function CheckoutPage() {
                 title: "Error",
                 description: "Table information is missing. Please scan a QR code again.",
             });
+            setIsProcessingPayment(false);
             return;
         }
         const { tableId } = JSON.parse(tableInfoStr);
@@ -68,6 +72,8 @@ export default function CheckoutPage() {
             contactName,
             contactPhone,
         });
+        
+        setIsProcessingPayment(false);
 
         if (result.error) {
             toast({
@@ -95,6 +101,17 @@ export default function CheckoutPage() {
     height: "10px",
     colors: ["#FF6B00", "#00A7E1", "#FFFFFF", "#FFC107"]
   };
+
+  if (isProcessingPayment) {
+     return (
+        <div className="container mx-auto flex h-[70vh] flex-col items-center justify-center text-center">
+             <CreditCard className="h-16 w-16 text-primary animate-pulse" />
+             <h1 className="font-headline text-3xl font-extrabold text-primary mt-4">Processing Payment...</h1>
+             <p className="mt-2 text-muted-foreground">Please wait while we securely process your transaction.</p>
+             <p className="mt-1 text-muted-foreground text-sm">Do not close or refresh this page.</p>
+        </div>
+     )
+  }
 
   if (isSuccess) {
     return (

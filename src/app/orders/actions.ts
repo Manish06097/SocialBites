@@ -2,11 +2,11 @@
 'use server';
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CartItem, Order } from "@/lib/types";
+import type { CartItem, Order, PaymentStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 interface CreateOrderPayload {
-    paymentMethod: string;
+    paymentMethod: 'upi' | 'cod';
     cartItems: CartItem[];
     cartTotal: number;
     tableId: string;
@@ -27,12 +27,17 @@ export async function createOrder(payload: CreateOrderPayload) {
     }
 
     const foodCourtId = payload.cartItems[0].stall.food_court_id;
-    // New, more robust display_id generation
-    const timestamp = Date.now().toString(36); // a base-36 string of the current time
-    const randomPart = Math.random().toString(36).substring(2, 7); // a 5-char random string
+    const timestamp = Date.now().toString(36);
+    const randomPart = Math.random().toString(36).substring(2, 7);
     const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
 
-    // 1. Create the main order
+    // For UPI, we initially set payment_status to 'pending'.
+    // For COD, payment is also 'pending' until collected.
+    const initialPaymentStatus: PaymentStatus = 'pending';
+    
+    // Simulate a unique payment ID for UPI for now
+    const paymentId = payload.paymentMethod === 'upi' ? `PAY-${displayId}` : null;
+
     const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -41,9 +46,12 @@ export async function createOrder(payload: CreateOrderPayload) {
             food_court_id: foodCourtId,
             table_id: payload.tableId,
             total_amount: payload.cartTotal,
-            status: 'pending', // All orders start as pending
+            status: 'pending',
             contact_name: payload.contactName,
             contact_phone: payload.contactPhone,
+            payment_method: payload.paymentMethod,
+            payment_status: initialPaymentStatus,
+            payment_id: paymentId,
         })
         .select('id')
         .single();
@@ -55,7 +63,6 @@ export async function createOrder(payload: CreateOrderPayload) {
 
     const orderId = orderData.id;
 
-    // 2. Create the order items
     const orderItemsToInsert = payload.cartItems.map(item => ({
         order_id: orderId,
         stall_id: item.stall.id,
@@ -65,7 +72,7 @@ export async function createOrder(payload: CreateOrderPayload) {
         total_price: item.totalPrice,
         customizations: item.customizationChoices,
         special_instructions: item.specialInstructions,
-        status: 'pending' // Each item also starts as pending
+        status: 'pending'
     }));
 
     const { error: itemsError } = await supabase
@@ -74,9 +81,26 @@ export async function createOrder(payload: CreateOrderPayload) {
 
     if (itemsError) {
         console.error("Error inserting order items:", itemsError);
-        // Here you might want to delete the order that was just created
-        // for data consistency, but we'll keep it simple for now.
         return { error: 'Could not save order items.' };
+    }
+
+    // In a real UPI integration, you would now call the PhonePe API,
+    // get a redirect URL, and return that URL to the client.
+    // For this simulation, we'll assume the payment is successful for UPI.
+    if (payload.paymentMethod === 'upi') {
+        // Simulate a delay for payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Update payment status to 'completed'
+        const { error: updateError } = await supabase
+            .from('orders')
+            .update({ payment_status: 'completed' })
+            .eq('id', orderId);
+
+        if (updateError) {
+            console.error("Error updating payment status:", updateError);
+            return { error: 'Payment processing failed.' };
+        }
     }
     
     revalidatePath(`/orders/${orderId}`);
@@ -117,7 +141,6 @@ export async function getLatestOrders() {
         return { orders: null, error: 'User not authenticated.' };
     }
     
-    // Calculate the timestamp for 1 hour ago
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supabase
@@ -131,8 +154,8 @@ export async function getLatestOrders() {
             )
         `)
         .eq('user_id', user.id)
-        .gt('created_at', oneHourAgo) // created in the last hour
-        .not('status', 'in', '(completed,rejected)') // not yet delivered or rejected
+        .gt('created_at', oneHourAgo)
+        .not('status', 'in', '(completed,rejected)')
         .order('created_at', { ascending: false });
 
     return { orders: data as Order[] | null, error: error?.message || null };
