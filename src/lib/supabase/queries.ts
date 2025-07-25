@@ -124,3 +124,19 @@ export async function getFoodCourts(): Promise<FoodCourt[]> {
 
   return data as FoodCourt[];
 }
+
+export async function getFoodCourtById(foodCourtId: string): Promise<FoodCourt | null> {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from('food_courts')
+    .select('*')
+    .eq('id', foodCourtId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching food court by ID:', error);
+    return null;
+  }
+
+  return data as FoodCourt;
+}

@@ -4,8 +4,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { notFound, useParams } from 'next/navigation';
-import { getStallWithMenuItems } from '@/lib/supabase/queries';
+import { getStallWithMenuItems, getFoodCourtById } from '@/lib/supabase/queries';
 import type { MenuItem, Stall } from '@/lib/types';
+import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,8 @@ export default function StallPage() {
   const [stall, setStall] = useState<Stall | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { setSelectedFoodCourt } = useFoodCourt();
+
   useEffect(() => {
     async function fetchStallData() {
       if (!stallId) {
@@ -28,10 +31,15 @@ export default function StallPage() {
       setLoading(true);
       const fetchedStall = await getStallWithMenuItems(stallId);
       setStall(fetchedStall);
+
+      if (fetchedStall && fetchedStall.food_court_id) {
+        const foodCourt = await getFoodCourtById(fetchedStall.food_court_id);
+        setSelectedFoodCourt(foodCourt);
+      }
       setLoading(false);
     }
     fetchStallData();
-  }, [stallId]);
+  }, [stallId, setSelectedFoodCourt]);
 
   if (loading) {
     return (

@@ -15,7 +15,7 @@ import { Separator } from './ui/separator';
 
 interface MenuItemDialogProps {
   item: MenuItem;
-  stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>;
+  stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

@@ -18,7 +18,7 @@ import {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (item: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => void;
+  addToCart: (item: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
@@ -33,7 +33,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const { selectedFoodCourt } = useFoodCourt();
   const [showClearCartDialog, setShowClearCartDialog] = useState(false);
-  const [pendingCartItem, setPendingCartItem] = useState<{ item: MenuItem; stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>; quantity: number; customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string; } | null>(null);
+  const [pendingCartItem, setPendingCartItem] = useState<{ item: MenuItem; stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>; quantity: number; customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string; } | null>(null);
 
 
   const calculateTotalPrice = useCallback((menuItem: MenuItem, quantity: number, customizationChoices?: { [title: string]: string | string[] }) => {
@@ -64,7 +64,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return `${menuItemId}-${customizationsString}-${specialInstructions || ''}`;
   };
 
-  const performAddToCart = (menuItem: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => {
+  const performAddToCart = (menuItem: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => {
      setCartItems(prevItems => {
       const cartItemId = generateCartItemId(menuItem.id, customizationChoices, specialInstructions);
       const existingItem = prevItems.find(item => item.id === cartItemId);
@@ -97,8 +97,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   }
 
-  const addToCart = (menuItem: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'foodCourtId'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => {
-    if (cartItems.length > 0 && cartItems[0].stall.foodCourtId !== stall.foodCourtId) {
+  const addToCart = (menuItem: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => {
+    if (cartItems.length > 0 && cartItems[0].stall.food_court_id !== stall.food_court_id) {
         setPendingCartItem({ item: menuItem, stall, quantity, customizationChoices, specialInstructions });
         setShowClearCartDialog(true);
     } else {
