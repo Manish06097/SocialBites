@@ -2,11 +2,11 @@
 'use server';
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CartItem, Order, PaymentStatus } from "@/lib/types";
+import type { CartItem, Order, PaymentStatus, PaymentMethod } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 interface CreateOrderPayload {
-    paymentMethod: 'upi' | 'cod';
+    paymentMethod: PaymentMethod;
     cartItems: CartItem[];
     cartTotal: number;
     tableId: string;
@@ -81,6 +81,8 @@ export async function createOrder(payload: CreateOrderPayload) {
 
     if (itemsError) {
         console.error("Error inserting order items:", itemsError);
+        // TODO: In a real app, you might want to delete the order record here
+        // if the items fail to insert.
         return { error: 'Could not save order items.' };
     }
 
@@ -99,6 +101,8 @@ export async function createOrder(payload: CreateOrderPayload) {
 
         if (updateError) {
             console.error("Error updating payment status:", updateError);
+            // Even if payment status update fails, the order is still placed.
+            // A background job could retry this. For now, we'll return an error.
             return { error: 'Payment processing failed.' };
         }
     }

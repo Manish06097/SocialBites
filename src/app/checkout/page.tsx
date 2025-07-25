@@ -15,6 +15,7 @@ import Confetti from 'react-dom-confetti';
 import { useState, useEffect, useTransition } from 'react';
 import { createOrder } from '../orders/actions';
 import { Loader2, CreditCard } from 'lucide-react';
+import type { PaymentMethod } from '@/lib/types';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -43,7 +44,7 @@ export default function CheckoutPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const paymentMethod = formData.get('payment') as 'upi' | 'cod';
+    const paymentMethod = formData.get('payment') as PaymentMethod;
     const contactName = formData.get('name') as string;
     const contactPhone = formData.get('phone') as string;
     

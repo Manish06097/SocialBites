@@ -1,5 +1,6 @@
 
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -67,6 +68,7 @@ export interface TrendingItem {
 
 export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'completed' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed';
+export type PaymentMethod = 'upi' | 'cod';
 
 export interface OrderItem {
     id: string;
@@ -105,7 +107,7 @@ export interface Order {
   contact_name: string | null;
   contact_phone: string | null;
   order_items: OrderItem[];
-  payment_method: 'upi' | 'cod';
+  payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   payment_id: string | null;
 }
