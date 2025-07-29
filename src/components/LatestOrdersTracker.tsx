@@ -105,7 +105,7 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
 
     const handleOrderUpdate = (payload: any) => {
         const updatedOrder = payload.new as Order;
-        console.log('Realtime update received:', updatedOrder);
+        console.log('Realtime `orders` update received:', updatedOrder);
         setOrders(currentOrders => 
             currentOrders.map(order => 
                 order.id === updatedOrder.id ? { ...order, ...updatedOrder } : order
@@ -115,7 +115,7 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
     
     const handleOrderItemUpdate = (payload: any) => {
         const updatedItem = payload.new as OrderItem;
-        console.log('Realtime order_item update received:', updatedItem);
+        console.log('Realtime `order_items` update received:', updatedItem);
         setOrders(currentOrders => {
             return currentOrders.map(order => {
                 if(order.id === updatedItem.order_id) {
@@ -145,12 +145,16 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
     const ordersSubscription = supabase
         .channel('public:orders')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, handleOrderUpdate)
-        .subscribe();
+        .subscribe((status) => {
+            console.log('`orders` subscription status:', status);
+        });
         
     const orderItemsSubscription = supabase
       .channel('public:order_items')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, handleOrderItemUpdate)
-      .subscribe();
+      .subscribe((status) => {
+            console.log('`order_items` subscription status:', status);
+      });
 
 
     return () => {
