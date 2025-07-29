@@ -1,6 +1,7 @@
 
 
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -98,7 +99,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   display_id: string;
-  user_id: string;
+  user_id?: string;
   food_court_id: string;
   table_id: string | null;
   total_amount: number;
