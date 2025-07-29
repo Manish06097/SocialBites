@@ -103,12 +103,22 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
       return;
     }
 
+    const determineOverallStatus = (items: OrderItem[]): OrderStatus => {
+        const itemStatuses = items.map(item => item.status);
+        if (itemStatuses.every(s => s === 'completed')) return 'completed';
+        if (itemStatuses.every(s => s === 'rejected')) return 'rejected';
+        if (itemStatuses.some(s => s === 'ready_for_pickup')) return 'ready_for_pickup';
+        if (itemStatuses.some(s => s === 'preparing')) return 'preparing';
+        if (itemStatuses.some(s => s === 'accepted')) return 'accepted';
+        return 'pending';
+    };
+
     const handleOrderUpdate = (payload: any) => {
         const updatedOrder = payload.new as Order;
         console.log('Realtime `orders` update received:', updatedOrder);
         setOrders(currentOrders => 
             currentOrders.map(order => 
-                order.id === updatedOrder.id ? { ...order, ...updatedOrder } : order
+                order.id === updatedOrder.id ? { ...order, ...updatedOrder, status: determineOverallStatus(order.order_items) } : order
             )
         );
     };
@@ -118,42 +128,39 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
         console.log('Realtime `order_items` update received:', updatedItem);
         setOrders(currentOrders => {
             return currentOrders.map(order => {
-                if(order.id === updatedItem.order_id) {
-                    const newItems = order.order_items.map(item => 
-                        item.id === updatedItem.id ? { ...item, ...updatedItem } : item
+                if (order.id === updatedItem.order_id) {
+                    // This is the order that contains the updated item.
+                    const updatedItems = order.order_items.map(item =>
+                        item.id === updatedItem.id ? { ...item, status: updatedItem.status } : item
                     );
                     
-                    // Also check if the main order status needs to be updated based on item statuses
-                    const newOrderStatus = determineOverallStatus(newItems);
+                    const newOverallStatus = determineOverallStatus(updatedItems);
                     
-                    return { ...order, order_items: newItems, status: newOrderStatus };
+                    return { ...order, order_items: updatedItems, status: newOverallStatus };
                 }
                 return order;
-            })
+            });
         });
-    }
-
-    const determineOverallStatus = (items: OrderItem[]): OrderStatus => {
-        if (items.every(item => item.status === 'completed')) return 'completed';
-        if (items.every(item => item.status === 'rejected')) return 'rejected';
-        if (items.some(item => item.status === 'ready_for_pickup')) return 'ready_for_pickup';
-        if (items.some(item => item.status === 'preparing')) return 'preparing';
-        if (items.some(item => item.status === 'accepted')) return 'accepted';
-        return 'pending';
     };
 
     const ordersSubscription = supabase
-        .channel('public:orders')
+        .channel('public:orders:userId=eq.123') // A unique channel name is good practice
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, handleOrderUpdate)
-        .subscribe((status) => {
+        .subscribe((status, err) => {
             console.log('`orders` subscription status:', status);
+            if (err) {
+                console.error('`orders` subscription error:', err);
+            }
         });
         
     const orderItemsSubscription = supabase
-      .channel('public:order_items')
+      .channel('public:order_items:userId=eq.123') // A unique channel name is good practice
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, handleOrderItemUpdate)
-      .subscribe((status) => {
+      .subscribe((status, err) => {
             console.log('`order_items` subscription status:', status);
+            if (err) {
+                console.error('`order_items` subscription error:', err);
+            }
       });
 
 
@@ -163,7 +170,10 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
     };
   }, [supabase]);
 
-  if (orders.length === 0) {
+  // Filter out orders that are completed/rejected from the real-time view
+  const activeOrders = orders.filter(order => order.status !== 'completed' && order.status !== 'rejected');
+
+  if (activeOrders.length === 0) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">
@@ -175,7 +185,7 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
 
   return (
     <div className="space-y-6">
-      {orders.map(order => <OrderCard key={order.id} order={order} />)}
+      {activeOrders.map(order => <OrderCard key={order.id} order={order} />)}
     </div>
   );
 }
