@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Card,
   CardContent,
@@ -18,11 +18,11 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, Bike } from 'lucide-react';
+import { CheckCircle, XCircle, Bike, Utensils, ChefHat } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus } from '@/lib/types';
-import { getVendorStallId, getVendorOrders, updateOrderItemStatus } from '@/app/vendor/actions';
-import { useRouter } from 'next/navigation';
+import { getVendorStallId, getVendorOrders, updateOrderStatus } from '@/app/vendor/actions';
+import { useToast } from '@/hooks/use-toast';
 
 const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
@@ -46,25 +46,14 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
     return () => clearInterval(interval);
   }, [order.created_at]);
 
-  // Determine the overall status of the order based on its items
-  const overallStatus: OrderStatus = order.order_items.every(item => item.status === 'completed')
-    ? 'completed'
-    : order.order_items.every(item => item.status === 'rejected')
-    ? 'rejected'
-    : order.order_items.some(item => item.status === 'ready_for_pickup')
-    ? 'ready_for_pickup'
-    : order.order_items.some(item => item.status === 'preparing')
-    ? 'preparing'
-    : order.order_items.some(item => item.status === 'accepted')
-    ? 'accepted'
-    : 'pending';
+  const overallStatus = order.status;
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
             <div>
-                 <CardTitle className="text-xl">Order #{order.display_id}</CardTitle>
+                 <CardTitle className="text-xl">Order #{order.display_id.split('-').pop()}</CardTitle>
                  <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
             </div>
             <div className="text-right">
@@ -99,7 +88,7 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
         )}
         {overallStatus === 'accepted' && (
             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
-                <Bike className="mr-2 h-4 w-4" />
+                <ChefHat className="mr-2 h-4 w-4" />
                 Mark as Preparing
             </Button>
         )}
@@ -135,7 +124,8 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [isUpdating, startTransition] = useTransition();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -156,23 +146,28 @@ export default function VendorOrdersPage() {
   }, []);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    try {
-      // Find the order and update all its items
-      const orderToUpdate = orders.find(order => order.id === orderId);
-      if (orderToUpdate) {
-        for (const item of orderToUpdate.order_items) {
-          await updateOrderItemStatus(item.id, newStatus);
-        }
+    startTransition(async () => {
+      try {
+        await updateOrderStatus(orderId, newStatus);
         // Re-fetch orders to reflect the changes
         const stallId = await getVendorStallId();
         if (stallId) {
           const updatedOrders = await getVendorOrders(stallId);
           setOrders(updatedOrders);
         }
+        toast({
+          title: "Order Updated",
+          description: `Order has been marked as ${newStatus}.`,
+        })
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Update Failed",
+          description: "Could not update the order status.",
+        })
+        console.error('Failed to update order status:', error);
       }
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-    }
+    });
   };
   
   if (isLoading) {
@@ -198,10 +193,10 @@ export default function VendorOrdersPage() {
     )
   }
 
-  const pendingOrders = orders.filter(o => o.order_items.some(item => item.status === 'pending' || item.status === 'accepted'));
-  const preparingOrders = orders.filter(o => o.order_items.some(item => item.status === 'preparing'));
-  const readyOrders = orders.filter(o => o.order_items.some(item => item.status === 'ready_for_pickup'));
-  const completedOrders = orders.filter(o => o.order_items.every(item => item.status === 'completed' || item.status === 'rejected'));
+  const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'accepted');
+  const preparingOrders = orders.filter(o => o.status === 'preparing');
+  const readyOrders = orders.filter(o => o.status === 'ready_for_pickup');
+  const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'rejected');
 
   return (
     <>

@@ -20,10 +20,10 @@ const statusDisplayConfig: Record<OrderStatus, { text: string; className: string
 
 function groupItemsByStall(items: OrderItem[]) {
     return items.reduce((acc, item) => {
-        const stallId = item.stall_id;
+        const stallId = item.stalls?.name ?? 'Unknown Stall';
         if (!acc[stallId]) {
             acc[stallId] = {
-                stallName: item.stalls?.name ?? 'Unknown Stall',
+                stallName: stallId,
                 items: [],
             };
         }
@@ -53,12 +53,12 @@ function OrderCard({order}: {order: Order}) {
                             Placed on {formatInTimeZone(new Date(order.created_at), IST_TIMEZONE, "MMMM d, yyyy 'at' h:mm a")}
                         </CardDescription>
                     </div>
-                    <Badge className={`border-transparent text-sm font-bold capitalize ${statusDisplayConfig[order.status].className}`}>{statusDisplayConfig[order.status].text}</Badge>
+                    <Badge className={`border-transparent text-sm font-bold capitalize ${statusDisplayConfig[order.status]?.className || ''}`}>{statusDisplayConfig[order.status]?.text || 'Unknown'}</Badge>
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-               {Object.entries(itemsByStall).map(([stallId, stallData]) => (
-                 <div key={stallId}>
+               {Object.entries(itemsByStall).map(([stallName, stallData]) => (
+                 <div key={stallName}>
                     <h3 className="font-headline text-xl font-semibold mb-2">{stallData.stallName}</h3>
                     <div className="space-y-4">
                     {stallData.items.map(item => (
@@ -75,7 +75,6 @@ function OrderCard({order}: {order: Order}) {
                                 <div>
                                     <p className="font-semibold">{item.menu_items?.name}</p>
                                     <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                                    <Badge variant="secondary" className={`capitalize mt-1 ${statusDisplayConfig[item.status].className}`}>{statusDisplayConfig[item.status].text}</Badge>
                                 </div>
                             </div>
                             <p className="font-bold">₹{item.total_price.toFixed(2)}</p>
@@ -102,49 +101,19 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
     if (typeof window === 'undefined') {
       return;
     }
-
-    const determineOverallStatus = (items: OrderItem[]): OrderStatus => {
-        const itemStatuses = items.map(item => item.status);
-        if (itemStatuses.every(s => s === 'completed')) return 'completed';
-        if (itemStatuses.every(s => s === 'rejected')) return 'rejected';
-        if (itemStatuses.some(s => s === 'ready_for_pickup')) return 'ready_for_pickup';
-        if (itemStatuses.some(s => s === 'preparing')) return 'preparing';
-        if (itemStatuses.some(s => s === 'accepted')) return 'accepted';
-        return 'pending';
-    };
-
+    
     const handleOrderUpdate = (payload: any) => {
         const updatedOrder = payload.new as Order;
         console.log('Realtime `orders` update received:', updatedOrder);
         setOrders(currentOrders => 
             currentOrders.map(order => 
-                order.id === updatedOrder.id ? { ...order, ...updatedOrder, status: determineOverallStatus(order.order_items) } : order
+                order.id === updatedOrder.id ? { ...order, status: updatedOrder.status } : order
             )
         );
     };
-    
-    const handleOrderItemUpdate = (payload: any) => {
-        const updatedItem = payload.new as OrderItem;
-        console.log('Realtime `order_items` update received:', updatedItem);
-        setOrders(currentOrders => {
-            return currentOrders.map(order => {
-                if (order.id === updatedItem.order_id) {
-                    // This is the order that contains the updated item.
-                    const updatedItems = order.order_items.map(item =>
-                        item.id === updatedItem.id ? { ...item, status: updatedItem.status } : item
-                    );
-                    
-                    const newOverallStatus = determineOverallStatus(updatedItems);
-                    
-                    return { ...order, order_items: updatedItems, status: newOverallStatus };
-                }
-                return order;
-            });
-        });
-    };
 
     const ordersSubscription = supabase
-        .channel('public:orders:userId=eq.123') // A unique channel name is good practice
+        .channel('public:orders')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, handleOrderUpdate)
         .subscribe((status, err) => {
             console.log('`orders` subscription status:', status);
@@ -152,21 +121,9 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
                 console.error('`orders` subscription error:', err);
             }
         });
-        
-    const orderItemsSubscription = supabase
-      .channel('public:order_items:userId=eq.123') // A unique channel name is good practice
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, handleOrderItemUpdate)
-      .subscribe((status, err) => {
-            console.log('`order_items` subscription status:', status);
-            if (err) {
-                console.error('`order_items` subscription error:', err);
-            }
-      });
-
 
     return () => {
       supabase.removeChannel(ordersSubscription);
-      supabase.removeChannel(orderItemsSubscription);
     };
   }, [supabase]);
 
