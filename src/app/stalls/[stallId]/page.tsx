@@ -10,6 +10,7 @@ import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -103,8 +104,14 @@ export default function StallPage() {
                       <h1 className="font-headline text-2xl font-extrabold text-white [text-shadow:1px_1px_3px_#000000a0] md:text-4xl">{stall.name}</h1>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white">
                         <div className="flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 backdrop-blur-sm">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-semibold">{stall.rating?.toFixed(1) || 'N/A'}</span>
+                            {stall.rating && stall.rating > 0 ? (
+                              <>
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="font-semibold">{stall.rating.toFixed(1)}</span>
+                              </>
+                            ) : (
+                               <span className="font-semibold px-1">New</span>
+                            )}
                         </div>
                         <div className="hidden items-center gap-2 sm:flex">
                           <span className="hidden sm:inline">•</span>

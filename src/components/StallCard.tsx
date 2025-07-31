@@ -37,8 +37,14 @@ export default function StallCard({ stall }: StallCardProps) {
           <div className="p-4 pt-6">
             <h3 className="font-headline text-xl font-bold truncate">{stall.name}</h3>
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span>{stall.rating?.toFixed(1) || 'N/A'}</span>
+              {stall.rating && stall.rating > 0 ? (
+                <>
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span>{stall.rating.toFixed(1)}</span>
+                </>
+              ) : (
+                <Badge variant="outline" className="text-primary border-primary">New</Badge>
+              )}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {stall.tags.map((tag) => (
