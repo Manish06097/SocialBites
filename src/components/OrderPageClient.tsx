@@ -33,38 +33,26 @@ export default function OrderPageClient({ initialLatestOrders, initialPastOrders
 
         const isTerminal = fullOrder.status === 'completed' || fullOrder.status === 'rejected';
 
-        // Update latest orders
         setLatestOrders(currentLatest => {
-            const existingIndex = currentLatest.findIndex(o => o.id === fullOrder.id);
-            if (isTerminal) {
-                // If terminal, remove from latest
-                return currentLatest.filter(o => o.id !== fullOrder.id);
-            } else {
-                // If not terminal, update or add to latest
-                if (existingIndex > -1) {
-                    const newLatest = [...currentLatest];
-                    newLatest[existingIndex] = fullOrder;
-                    return newLatest;
-                }
-                return [fullOrder, ...currentLatest];
+            // Remove the order from the current latest list, if present
+            const filteredLatest = currentLatest.filter(o => o.id !== fullOrder.id);
+            if (!isTerminal) {
+                // If it's active again, add it to the latest list.
+                return [fullOrder, ...filteredLatest];
             }
+            // If it's terminal, just return the filtered list.
+            return filteredLatest;
         });
 
-        // Update past orders
         setPastOrders(currentPast => {
-            const existingIndex = currentPast.findIndex(o => o.id === fullOrder.id);
+            // Remove the order from the current past list, if present
+            const filteredPast = currentPast.filter(o => o.id !== fullOrder.id);
             if (isTerminal) {
-                 // If terminal, update or add to past
-                if (existingIndex > -1) {
-                    const newPast = [...currentPast];
-                    newPast[existingIndex] = fullOrder;
-                    return newPast;
-                }
-                return [fullOrder, ...currentPast];
-            } else {
-                // If not terminal, remove from past
-                return currentPast.filter(o => o.id !== fullOrder.id);
+                // If it's terminal, add it to the past list.
+                return [fullOrder, ...filteredPast];
             }
+            // If it's active again, just return the filtered list.
+            return filteredPast;
         });
     };
 
