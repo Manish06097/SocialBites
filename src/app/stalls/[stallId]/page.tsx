@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StarRating } from '@/components/StarRating';
 
 export default function StallPage() {
   const params = useParams();
@@ -106,7 +107,7 @@ export default function StallPage() {
                         <div className="flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 backdrop-blur-sm">
                             {stall.rating && stall.rating > 0 ? (
                               <>
-                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <StarRating rating={stall.rating} starClassName="h-4 w-4" />
                                 <span className="font-semibold">{stall.rating.toFixed(1)}</span>
                               </>
                             ) : (
@@ -151,10 +152,10 @@ export default function StallPage() {
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <div className="flex items-center justify-between text-sm">
                         {item.rating && item.rating > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
-                            <span className="font-medium">{item.rating.toFixed(1)}</span>
-                          </div>
+                           <div className="flex items-center gap-2">
+                             <StarRating rating={item.rating} />
+                             <span className="font-medium text-muted-foreground">({item.rating.toFixed(1)})</span>
+                           </div>
                         )}
                         {item.orders && item.orders > 0 && (
                           <div className="flex items-center gap-2">

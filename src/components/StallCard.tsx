@@ -1,9 +1,11 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Stall } from '@/lib/types';
+import { StarRating } from './StarRating';
 
 interface StallCardProps {
   stall: Stall;
@@ -39,8 +41,8 @@ export default function StallCard({ stall }: StallCardProps) {
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               {stall.rating && stall.rating > 0 ? (
                 <>
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>{stall.rating.toFixed(1)}</span>
+                  <StarRating rating={stall.rating} />
+                  <span className="font-semibold">{stall.rating.toFixed(1)}</span>
                 </>
               ) : (
                 <Badge variant="outline" className="text-primary border-primary">New</Badge>
