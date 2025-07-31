@@ -6,6 +6,7 @@ import type { Order } from '@/lib/types';
 import LatestOrdersTracker from '@/components/LatestOrdersTracker';
 import PastOrdersList from '@/components/PastOrdersList';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getOrderById } from '@/app/orders/actions';
 
 interface OrderPageClientProps {
   initialLatestOrders: Order[];
@@ -18,44 +19,51 @@ export default function OrderPageClient({ initialLatestOrders, initialPastOrders
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    const handleOrderUpdate = (payload: any) => {
-        const updatedOrder = payload.new as Order;
-        console.log('Realtime `orders` update received:', updatedOrder);
+    const handleOrderUpdate = async (payload: any) => {
+        const updatedOrderId = payload.new.id;
+        console.log('Realtime `orders` update received for ID:', updatedOrderId);
 
-        const isTerminal = updatedOrder.status === 'completed' || updatedOrder.status === 'rejected';
+        // Refetch the full order data to ensure we have order_items
+        const { order: fullOrder, error } = await getOrderById(updatedOrderId);
 
-        // Update past orders first
-        setPastOrders(currentPast => {
-            const alreadyExists = currentPast.some(o => o.id === updatedOrder.id);
-            if (isTerminal) {
-                // If order is terminal and not in past orders, add it
-                if (!alreadyExists) {
-                    // We need the full order object, which we don't have from the initial load.
-                    // This is a limitation, so we might need a fetch here if order_items are missing.
-                    // For now, let's assume payload.new has enough info.
-                    return [updatedOrder, ...currentPast];
-                }
-                // If it exists, update it
-                return currentPast.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-            } else {
-                // If order is not terminal, remove it from past orders
-                return currentPast.filter(o => o.id !== updatedOrder.id);
-            }
-        });
-        
+        if (error || !fullOrder) {
+            console.error('Could not fetch updated order details:', error);
+            return;
+        }
+
+        const isTerminal = fullOrder.status === 'completed' || fullOrder.status === 'rejected';
+
         // Update latest orders
         setLatestOrders(currentLatest => {
-            const alreadyExists = currentLatest.some(o => o.id === updatedOrder.id);
-            if (!isTerminal) {
-                // If order is active and not in latest orders, add it
-                 if (!alreadyExists) {
-                    return [updatedOrder, ...currentLatest];
-                }
-                // If it exists, update it
-                return currentLatest.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+            const existingIndex = currentLatest.findIndex(o => o.id === fullOrder.id);
+            if (isTerminal) {
+                // If terminal, remove from latest
+                return currentLatest.filter(o => o.id !== fullOrder.id);
             } else {
-                 // If order is terminal, remove it from latest orders
-                 return currentLatest.filter(o => o.id !== updatedOrder.id);
+                // If not terminal, update or add to latest
+                if (existingIndex > -1) {
+                    const newLatest = [...currentLatest];
+                    newLatest[existingIndex] = fullOrder;
+                    return newLatest;
+                }
+                return [fullOrder, ...currentLatest];
+            }
+        });
+
+        // Update past orders
+        setPastOrders(currentPast => {
+            const existingIndex = currentPast.findIndex(o => o.id === fullOrder.id);
+            if (isTerminal) {
+                 // If terminal, update or add to past
+                if (existingIndex > -1) {
+                    const newPast = [...currentPast];
+                    newPast[existingIndex] = fullOrder;
+                    return newPast;
+                }
+                return [fullOrder, ...currentPast];
+            } else {
+                // If not terminal, remove from past
+                return currentPast.filter(o => o.id !== fullOrder.id);
             }
         });
     };

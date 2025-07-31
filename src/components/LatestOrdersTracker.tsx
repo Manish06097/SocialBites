@@ -17,6 +17,7 @@ const statusDisplayConfig: Record<OrderStatus, { text: string; className: string
 };
 
 function groupItemsByStall(items: OrderItem[]) {
+    if (!items) return {};
     return items.reduce((acc, item) => {
         const stallId = item.stalls?.name ?? 'Unknown Stall';
         if (!acc[stallId]) {

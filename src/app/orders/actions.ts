@@ -112,7 +112,7 @@ export async function createOrder(payload: CreateOrderPayload) {
 }
 
 
-export async function getOrderById(orderId: string) {
+export async function getOrderById(orderId: string): Promise<{ order: Order | null; error: string | null }> {
     const supabase = await createSupabaseServerClient();
      const { data: { user } } = await supabase.auth.getUser();
 
