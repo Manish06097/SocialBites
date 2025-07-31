@@ -14,16 +14,17 @@ interface OrderPageClientProps {
 }
 
 export default function OrderPageClient({ initialLatestOrders, initialPastOrders }: OrderPageClientProps) {
-  const [latestOrders, setLatestOrders] = useState<Order[]>(initialLatestOrders);
-  const [pastOrders, setPastOrders] = useState<Order[]>(initialPastOrders);
+  const [allOrders, setAllOrders] = useState({
+      latest: initialLatestOrders,
+      past: initialPastOrders
+  });
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     const handleOrderUpdate = async (payload: any) => {
         const updatedOrderId = payload.new.id;
-        console.log('Realtime `orders` update received for ID:', updatedOrderId);
+        console.log('Realtime `orders` update received for ID:', updatedOrderId, 'New status:', payload.new.status);
 
-        // Refetch the full order data to ensure we have order_items
         const { order: fullOrder, error } = await getOrderById(updatedOrderId);
 
         if (error || !fullOrder) {
@@ -33,26 +34,31 @@ export default function OrderPageClient({ initialLatestOrders, initialPastOrders
 
         const isTerminal = fullOrder.status === 'completed' || fullOrder.status === 'rejected';
 
-        setLatestOrders(currentLatest => {
-            // Remove the order from the current latest list, if present
-            const filteredLatest = currentLatest.filter(o => o.id !== fullOrder.id);
-            if (!isTerminal) {
-                // If it's active again, add it to the latest list.
-                return [fullOrder, ...filteredLatest];
-            }
-            // If it's terminal, just return the filtered list.
-            return filteredLatest;
-        });
+        setAllOrders(currentOrders => {
+            let newLatest = [...currentOrders.latest];
+            let newPast = [...currentOrders.past];
 
-        setPastOrders(currentPast => {
-            // Remove the order from the current past list, if present
-            const filteredPast = currentPast.filter(o => o.id !== fullOrder.id);
             if (isTerminal) {
-                // If it's terminal, add it to the past list.
-                return [fullOrder, ...filteredPast];
+                // It's finished, so move from latest to past.
+                newLatest = newLatest.filter(o => o.id !== fullOrder.id);
+                // Add to past if not already there, otherwise update it.
+                if (!newPast.some(o => o.id === fullOrder.id)) {
+                    newPast = [fullOrder, ...newPast];
+                } else {
+                    newPast = newPast.map(o => o.id === fullOrder.id ? fullOrder : o);
+                }
+            } else {
+                // It's active, so move from past to latest.
+                newPast = newPast.filter(o => o.id !== fullOrder.id);
+                 // Add to latest if not already there, otherwise update it.
+                if (!newLatest.some(o => o.id === fullOrder.id)) {
+                    newLatest = [fullOrder, ...newLatest];
+                } else {
+                    newLatest = newLatest.map(o => o.id === fullOrder.id ? fullOrder : o);
+                }
             }
-            // If it's active again, just return the filtered list.
-            return filteredPast;
+
+            return { latest: newLatest, past: newPast };
         });
     };
 
@@ -70,20 +76,20 @@ export default function OrderPageClient({ initialLatestOrders, initialPastOrders
     };
   }, [supabase]);
 
-  const latestOrderIds = latestOrders.map(o => o.id);
 
   return (
     <>
       <div>
         <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
-        <LatestOrdersTracker orders={latestOrders} />
+        <LatestOrdersTracker orders={allOrders.latest} />
       </div>
 
       <div>
         <h2 className="font-headline text-3xl font-bold mb-4">Past Orders</h2>
         <PastOrdersList 
-            initialOrders={pastOrders} 
-            latestOrderIds={latestOrderIds} 
+            initialOrders={allOrders.past}
+            setPastOrders={(newPastOrders) => setAllOrders(prev => ({...prev, past: newPastOrders}))}
+            latestOrderIds={allOrders.latest.map(o => o.id)} 
         />
       </div>
     </>

@@ -61,11 +61,11 @@ function PastOrder({order}: {order: Order}) {
 
 interface PastOrdersListProps {
     initialOrders: Order[];
+    setPastOrders: (orders: Order[]) => void;
     latestOrderIds: string[];
 }
 
-export default function PastOrdersList({ initialOrders, latestOrderIds }: PastOrdersListProps) {
-    const [orders, setOrders] = useState<Order[]>(initialOrders);
+export default function PastOrdersList({ initialOrders, setPastOrders, latestOrderIds }: PastOrdersListProps) {
     const [offset, setOffset] = useState(initialOrders.length);
     const [hasMore, setHasMore] = useState(initialOrders.length === 5); // Assume there's more if we got the full initial limit
     const [isPending, startTransition] = useTransition();
@@ -79,7 +79,7 @@ export default function PastOrdersList({ initialOrders, latestOrderIds }: PastOr
             });
 
             if (result.orders && result.orders.length > 0) {
-                setOrders(prev => [...prev, ...result.orders!]);
+                setPastOrders([...initialOrders, ...result.orders]);
                 setOffset(prev => prev + result.orders!.length);
                 if (result.orders.length < 10) {
                     setHasMore(false);
@@ -94,8 +94,8 @@ export default function PastOrdersList({ initialOrders, latestOrderIds }: PastOr
         <Card>
             <CardContent className="p-0">
                 <Accordion type="multiple" className="w-full">
-                    {orders.length > 0 ? (
-                        orders.map(order => <PastOrder key={order.id} order={order} />)
+                    {initialOrders.length > 0 ? (
+                        initialOrders.map(order => <PastOrder key={order.id} order={order} />)
                     ) : (
                         <div className="p-6 text-center text-muted-foreground">
                             You have no past orders.
