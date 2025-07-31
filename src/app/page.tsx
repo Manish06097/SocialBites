@@ -197,30 +197,6 @@ function HomePageContent() {
         </div>
       </section>
       
-      <section className="mb-12">
-        <h2 className="font-headline text-3xl font-bold">What's Trending 🔥</h2>
-        <Carousel opts={{ align: "start", loop: true }} className="mt-6 w-full">
-          <CarouselContent>
-            {trendingItems.map((item) => (
-              <CarouselItem key={item.id} className="md:basis-1/2 lg:basis-1/3">
-                <Card className="overflow-hidden">
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <Image src={item.imageUrl} alt={item.name} width={80} height={80} className="h-20 w-20 rounded-md object-cover" data-ai-hint="food item" />
-                    <div className="flex-grow">
-                      <h4 className="font-semibold truncate">{item.name}</h4>
-                      <p className="text-sm text-muted-foreground">{item.stallName}</p>
-                      <p className="font-bold text-primary">₹{item.price}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex" />
-          <CarouselNext className="hidden sm:flex" />
-        </Carousel>
-      </section>
-
       <section>
         <h2 className="font-headline text-3xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
         {filteredStalls.length > 0 ? (
