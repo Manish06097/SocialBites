@@ -3,6 +3,7 @@
 
 
 
+
 export interface Stall {
   id: string;
   name: string;
@@ -83,6 +84,8 @@ export interface OrderItem {
     customizations: Customization[] | null;
     special_instructions: string | null;
     status: OrderStatus;
+    rating?: number | null;
+    review?: string | null;
     menu_items: {
         name: string;
         image_url: string;
@@ -112,6 +115,7 @@ export interface Order {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   payment_id: string | null;
+  is_reviewed?: boolean;
 }
 
 

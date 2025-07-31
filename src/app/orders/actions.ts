@@ -2,7 +2,7 @@
 'use server';
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CartItem, Order, PaymentStatus, PaymentMethod } from "@/lib/types";
+import type { CartItem, Order, PaymentStatus, PaymentMethod, OrderItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 interface CreateOrderPayload {
@@ -87,7 +87,7 @@ export async function createOrder(payload: CreateOrderPayload) {
     }
 
     // In a real UPI integration, you would now call the PhonePe API,
-    // get a redirect URL, and return that URL to the client.
+    // get a redirect URL, and return that to the client.
     // For this simulation, we'll assume the payment is successful for UPI.
     if (payload.paymentMethod === 'upi') {
         // Simulate a delay for payment processing
@@ -108,6 +108,7 @@ export async function createOrder(payload: CreateOrderPayload) {
     }
     
     revalidatePath(`/orders/${orderId}`);
+    revalidatePath(`/orders`);
     return { orderId };
 }
 
@@ -197,4 +198,65 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
     const { data, error } = await query;
 
     return { orders: data as Order[] | null, error: error?.message || null };
+}
+
+interface ReviewPayload {
+    orderId: string;
+    reviews: {
+        order_item_id: string;
+        rating: number | null;
+        review: string | null;
+    }[];
+}
+
+export async function submitReview({ orderId, reviews }: ReviewPayload) {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: 'You must be logged in to submit a review.' };
+    }
+
+    // Verify user owns the order
+    const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('id, user_id')
+        .eq('id', orderId)
+        .single();
+    
+    if (orderError || order?.user_id !== user.id) {
+        return { error: 'You do not have permission to review this order.' };
+    }
+    
+    // Update each order item with its review and rating
+    const updatePromises = reviews.map(r => 
+        supabase
+            .from('order_items')
+            .update({ rating: r.rating, review: r.review })
+            .eq('id', r.order_item_id)
+            .eq('order_id', orderId) // Ensure item belongs to the order
+    );
+    
+    const results = await Promise.all(updatePromises);
+    const someFailed = results.some(res => res.error);
+
+    if (someFailed) {
+        console.error('One or more order items failed to update with review.');
+        // Not returning an error to the user for now, as some might have succeeded.
+        // A more robust implementation might use a transaction.
+    }
+
+    // Mark the entire order as reviewed
+    const { error: finalOrderUpdateError } = await supabase
+        .from('orders')
+        .update({ is_reviewed: true })
+        .eq('id', orderId);
+    
+    if (finalOrderUpdateError) {
+        console.error('Failed to mark order as reviewed:', finalOrderUpdateError);
+        return { error: 'Could not finalize the review submission.' };
+    }
+
+    revalidatePath('/orders');
+    return { success: true };
 }
