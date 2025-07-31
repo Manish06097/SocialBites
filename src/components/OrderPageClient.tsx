@@ -22,34 +22,42 @@ export default function OrderPageClient({ initialLatestOrders, initialPastOrders
         const updatedOrder = payload.new as Order;
         console.log('Realtime `orders` update received:', updatedOrder);
 
-        const isCompleted = updatedOrder.status === 'completed';
-        const isRejected = updatedOrder.status === 'rejected';
+        const isTerminal = updatedOrder.status === 'completed' || updatedOrder.status === 'rejected';
 
-        // Update the latest orders list
-        setLatestOrders(currentOrders => {
-            // If the order is now completed or rejected, remove it from the latest list
-            if (isCompleted || isRejected) {
-                return currentOrders.filter(order => order.id !== updatedOrder.id);
+        // Update past orders first
+        setPastOrders(currentPast => {
+            const alreadyExists = currentPast.some(o => o.id === updatedOrder.id);
+            if (isTerminal) {
+                // If order is terminal and not in past orders, add it
+                if (!alreadyExists) {
+                    // We need the full order object, which we don't have from the initial load.
+                    // This is a limitation, so we might need a fetch here if order_items are missing.
+                    // For now, let's assume payload.new has enough info.
+                    return [updatedOrder, ...currentPast];
+                }
+                // If it exists, update it
+                return currentPast.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+            } else {
+                // If order is not terminal, remove it from past orders
+                return currentPast.filter(o => o.id !== updatedOrder.id);
             }
-            // Otherwise, update its status if it's in the list
-            return currentOrders.map(order => 
-                order.id === updatedOrder.id ? { ...order, ...updatedOrder } : order
-            );
         });
         
-        // If completed or rejected, add it to the past orders list
-        if (isCompleted || isRejected) {
-             // We need the full order object for the past orders list
-             // The payload.new should contain it.
-            setPastOrders(currentPastOrders => {
-                // Avoid adding duplicates
-                if (currentPastOrders.some(o => o.id === updatedOrder.id)) {
-                    return currentPastOrders;
+        // Update latest orders
+        setLatestOrders(currentLatest => {
+            const alreadyExists = currentLatest.some(o => o.id === updatedOrder.id);
+            if (!isTerminal) {
+                // If order is active and not in latest orders, add it
+                 if (!alreadyExists) {
+                    return [updatedOrder, ...currentLatest];
                 }
-                // Add the completed/rejected order to the top of the past orders list
-                return [updatedOrder, ...currentPastOrders];
-            });
-        }
+                // If it exists, update it
+                return currentLatest.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+            } else {
+                 // If order is terminal, remove it from latest orders
+                 return currentLatest.filter(o => o.id !== updatedOrder.id);
+            }
+        });
     };
 
     const ordersSubscription = supabase
