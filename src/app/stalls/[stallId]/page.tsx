@@ -110,7 +110,7 @@ export default function StallPage() {
                                 <span className="font-semibold">{stall.rating.toFixed(1)}</span>
                               </>
                             ) : (
-                               <span className="font-semibold px-1">New</span>
+                               <Badge variant="outline" className="border-white/50 text-white">New</Badge>
                             )}
                         </div>
                         <div className="hidden items-center gap-2 sm:flex">
@@ -150,14 +150,18 @@ export default function StallPage() {
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                           <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
-                           <span className="font-medium">{item.rating}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Flame className="h-4 w-4 text-red-500" />
-                            <span className="font-medium">{item.orders}+ ordered</span>
-                        </div>
+                        {item.rating && item.rating > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
+                            <span className="font-medium">{item.rating.toFixed(1)}</span>
+                          </div>
+                        )}
+                        {item.orders && item.orders > 0 && (
+                          <div className="flex items-center gap-2">
+                              <Flame className="h-4 w-4 text-red-500" />
+                              <span className="font-medium">{item.orders}+ ordered</span>
+                          </div>
+                        )}
                     </div>
                   </CardContent>
                   <div className="border-t p-4 flex justify-between items-center">
