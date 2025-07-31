@@ -150,7 +150,7 @@ export default function StallPage() {
                   </CardHeader>
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm text-muted-foreground">{item.description}</p>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm min-h-[20px]">
                         {item.rating && item.rating > 0 && (
                            <div className="flex items-center gap-2">
                              <StarRating rating={item.rating} />
