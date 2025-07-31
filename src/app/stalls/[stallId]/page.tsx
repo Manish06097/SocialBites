@@ -154,7 +154,6 @@ export default function StallPage() {
                         {item.rating && item.rating > 0 && (
                            <div className="flex items-center gap-2">
                              <StarRating rating={item.rating} />
-                             <span className="font-medium text-muted-foreground">({item.rating.toFixed(1)})</span>
                            </div>
                         )}
                         {item.orders && item.orders > 0 && (
