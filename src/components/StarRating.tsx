@@ -12,17 +12,14 @@ interface StarRatingProps {
 }
 
 export const StarRating = ({ rating, maxRating = 5, className, starClassName }: StarRatingProps) => {
-  const fullStars = Math.floor(rating);
-  const halfStar = rating % 1 !== 0;
-  const emptyStars = maxRating - fullStars - (halfStar ? 1 : 0);
+  const roundedRating = Math.round(rating);
+  const emptyStars = maxRating - roundedRating;
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      {[...Array(fullStars)].map((_, i) => (
+      {[...Array(roundedRating)].map((_, i) => (
         <Star key={`full-${i}`} className={cn("h-4 w-4 fill-yellow-400 text-yellow-400", starClassName)} />
       ))}
-      {/* This component does not support half stars yet, so we'll just round up for now */}
-      {/* For a more advanced version, we could use a half-filled star icon */}
       {[...Array(emptyStars)].map((_, i) => (
         <Star key={`empty-${i}`} className={cn("h-4 w-4 text-gray-300", starClassName)} />
       ))}
