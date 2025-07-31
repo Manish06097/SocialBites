@@ -1,12 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Order, OrderItem, OrderStatus } from '@/lib/types';
 
 const statusDisplayConfig: Record<OrderStatus, { text: string; className: string }> = {
@@ -89,48 +87,12 @@ function OrderCard({order}: {order: Order}) {
 }
 
 interface LatestOrdersTrackerProps {
-  initialOrders: Order[];
+  orders: Order[];
 }
 
-export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrackerProps) {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const supabase = createSupabaseBrowserClient();
+export default function LatestOrdersTracker({ orders }: LatestOrdersTrackerProps) {
 
-  useEffect(() => {
-    // Make sure we only run this on the client
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    const handleOrderUpdate = (payload: any) => {
-        const updatedOrder = payload.new as Order;
-        console.log('Realtime `orders` update received:', updatedOrder);
-        setOrders(currentOrders => 
-            currentOrders.map(order => 
-                order.id === updatedOrder.id ? { ...order, status: updatedOrder.status } : order
-            )
-        );
-    };
-
-    const ordersSubscription = supabase
-        .channel('public:orders')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, handleOrderUpdate)
-        .subscribe((status, err) => {
-            console.log('`orders` subscription status:', status);
-            if (err) {
-                console.error('`orders` subscription error:', err);
-            }
-        });
-
-    return () => {
-      supabase.removeChannel(ordersSubscription);
-    };
-  }, [supabase]);
-
-  // Filter out orders that are completed/rejected from the real-time view
-  const activeOrders = orders.filter(order => order.status !== 'completed' && order.status !== 'rejected');
-
-  if (activeOrders.length === 0) {
+  if (orders.length === 0) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">
@@ -142,7 +104,7 @@ export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrack
 
   return (
     <div className="space-y-6">
-      {activeOrders.map(order => <OrderCard key={order.id} order={order} />)}
+      {orders.map(order => <OrderCard key={order.id} order={order} />)}
     </div>
   );
 }

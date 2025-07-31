@@ -3,34 +3,40 @@
 
 import type { Order } from '@/lib/types';
 import { getLatestOrders, getPastOrders } from '../actions';
-import PastOrdersList from '@/components/PastOrdersList';
-import LatestOrdersTracker from '@/components/LatestOrdersTracker';
+import OrderPageClient from '@/components/OrderPageClient';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
 export default async function OrderTrackingPage({ params }: { params: { orderId: string } }) {
-  const {orders: latestOrders, error: latestOrdersError} = await getLatestOrders();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    // This should ideally be handled by middleware, but as a safeguard
+    redirect(`/login?redirect=/orders/${params.orderId}`);
+  }
+  
+  const {orders: initialLatestOrders, error: latestOrdersError} = await getLatestOrders();
   
   if (latestOrdersError) {
-    // Handle error appropriately, maybe show an error message
     console.error(latestOrdersError);
+    // Render an error state or a fallback
   }
 
-  const latestOrderIds = latestOrders?.map(o => o.id) || [];
+  const latestOrderIds = initialLatestOrders?.map(o => o.id) || [];
   const {orders: initialPastOrders, error: pastOrdersError} = await getPastOrders({currentOrderIds: latestOrderIds, limit: 5});
+
+   if (pastOrdersError) {
+    console.error(pastOrdersError);
+    // Render an error state or a fallback
+  }
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
-      <div>
-        <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
-        <LatestOrdersTracker initialOrders={latestOrders || []} />
-      </div>
-
-      <div>
-        <h2 className="font-headline text-3xl font-bold mb-4">Past Orders</h2>
-        <PastOrdersList 
-            initialOrders={initialPastOrders || []} 
-            latestOrderIds={latestOrderIds} 
-        />
-      </div>
+      <OrderPageClient
+        initialLatestOrders={initialLatestOrders || []}
+        initialPastOrders={initialPastOrders || []}
+      />
     </div>
   );
 }
