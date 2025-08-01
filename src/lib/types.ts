@@ -1,9 +1,3 @@
-
-
-
-
-
-
 export interface Stall {
   id: string;
   name: string;
@@ -69,7 +63,7 @@ export interface TrendingItem {
   price: number;
 }
 
-export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'completed' | 'rejected';
+export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'delivered' | 'completed' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed';
 export type PaymentMethod = 'upi' | 'cod';
 

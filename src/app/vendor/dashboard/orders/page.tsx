@@ -18,10 +18,10 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, Bike, ChefHat, MessageSquareQuote, Sparkles } from 'lucide-react';
+import { CheckCircle, XCircle, Bike, ChefHat, MessageSquareQuote, CookingPot, PackageCheck, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus } from '@/lib/types';
-import { getVendorStallId, getVendorOrders, updateOrderStatus } from '@/app/vendor/actions';
+import { getVendorStallId, getVendorOrders, updateOrderStatus, markOrderAsPaid } from '@/app/vendor/actions';
 import { useToast } from '@/hooks/use-toast';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,7 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void }) => {
+const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
 
@@ -68,12 +68,12 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
     setTimeAgo(calculateTimeSince());
     const interval = setInterval(() => {
         setTimeAgo(calculateTimeSince());
-    }, 60000); // Update every minute
+    }, 60000);
     return () => clearInterval(interval);
   }, [order.created_at]);
 
   const overallStatus = order.status;
-  const isPaid = order.payment_method === 'upi' && order.payment_status === 'completed';
+  const isPaid = order.payment_method === 'upi' || order.status === 'completed';
 
   return (
     <Card>
@@ -132,15 +132,28 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
         )}
         {overallStatus === 'preparing' && (
             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')}>
-                <Bike className="mr-2 h-4 w-4" />
+                <CookingPot className="mr-2 h-4 w-4" />
                 Mark as Ready
             </Button>
         )}
         {overallStatus === 'ready_for_pickup' && (
-             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'completed')}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Mark as Completed
+             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')}>
+                <PackageCheck className="mr-2 h-4 w-4" />
+                Mark as Delivered
             </Button>
+        )}
+        {overallStatus === 'delivered' && (
+            order.payment_method === 'cod' ? (
+                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)}>
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Mark as Paid (COD)
+                </Button>
+            ) : (
+                <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Order Completed
+                </p>
+            )
         )}
         {overallStatus === 'completed' && (
             <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
@@ -216,7 +229,6 @@ export default function VendorOrdersPage() {
   }, [stallId, supabase, fetchOrders, toast]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    // Optimistic UI update
     setOrders(prevOrders => 
         prevOrders.map(order => 
             order.id === orderId ? { ...order, status: newStatus } : order
@@ -226,6 +238,9 @@ export default function VendorOrdersPage() {
     startTransition(async () => {
       try {
         await updateOrderStatus(orderId, newStatus);
+        if (stallId) {
+            fetchOrders(stallId); // Re-sync to get the final state from DB
+        }
       } catch (error) {
         toast({
           variant: "destructive",
@@ -239,6 +254,29 @@ export default function VendorOrdersPage() {
       }
     });
   };
+
+  const handleMarkAsPaid = async (orderId: string) => {
+     setOrders(prevOrders => 
+        prevOrders.map(order => 
+            order.id === orderId ? { ...order, status: 'completed' } : order
+        )
+    );
+    startTransition(async () => {
+         try {
+            await markOrderAsPaid(orderId);
+         } catch(error) {
+            toast({
+              variant: "destructive",
+              title: "Update Failed",
+              description: "Could not mark order as paid.",
+            });
+            console.error('Failed to mark order as paid:', error);
+            if (stallId) {
+                fetchOrders(stallId);
+            }
+         }
+    });
+  }
   
   if (isLoading) {
     return (
@@ -252,8 +290,8 @@ export default function VendorOrdersPage() {
               <TabsList className="grid w-full grid-cols-4 h-auto">
                 <TabsTrigger value="pending">New</TabsTrigger>
                 <TabsTrigger value="preparing">Preparing</TabsTrigger>
-                <TabsTrigger value="ready_for_pickup">Ready</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="ready">Ready</TabsTrigger>
+                <TabsTrigger value="delivered">Delivered</TabsTrigger>
               </TabsList>
                <TabsContent value="pending" className="mt-4">
                   <p className="text-muted-foreground col-span-full text-center py-8">Loading orders...</p>
@@ -266,7 +304,7 @@ export default function VendorOrdersPage() {
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const preparingOrders = orders.filter(o => o.status === 'accepted' || o.status === 'preparing');
   const readyOrders = orders.filter(o => o.status === 'ready_for_pickup');
-  const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'rejected');
+  const deliveredOrders = orders.filter(o => o.status === 'delivered' || o.status === 'completed' || o.status === 'rejected');
 
   return (
     <>
@@ -283,29 +321,29 @@ export default function VendorOrdersPage() {
           <TabsTrigger value="preparing">
             Preparing <Badge className="ml-2">{preparingOrders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="ready_for_pickup">
+          <TabsTrigger value="ready">
             Ready <Badge className="ml-2">{readyOrders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="delivered">Delivered</TabsTrigger>
         </TabsList>
         <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
-        <TabsContent value="ready_for_pickup" className="mt-4">
+        <TabsContent value="ready" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
+             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
           </div>
         </TabsContent>
-        <TabsContent value="completed" className="mt-4">
+        <TabsContent value="delivered" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet.</p>}
+             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>

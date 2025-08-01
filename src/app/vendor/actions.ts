@@ -59,9 +59,6 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
         )
       )
     `)
-    // We fetch orders that contain at least one item from the vendor's stall.
-    // The RLS policy on 'order_items' will ensure we can only see items for our stall.
-    // The RLS policy on 'orders' will ensure we can only see orders containing our items.
     .in('id', 
         (await supabase
             .from('order_items')
@@ -69,7 +66,7 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
             .eq('stall_id', stallId)
         ).data?.map(o => o.order_id) || []
     )
-    .gte('created_at', today.toISOString()) // Only fetch orders from today
+    .gte('created_at', today.toISOString())
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -77,7 +74,6 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
     return [];
   }
 
-  // Since RLS on order_items filters items, we need to filter out orders that now have 0 items visible to the vendor.
   const filteredOrders = data.filter(order => order.order_items && order.order_items.length > 0);
 
   return filteredOrders as any as Order[];
@@ -100,10 +96,24 @@ export async function updateOrderItemStatus(orderItemId: string, newStatus: Orde
 export async function updateOrderStatus(orderId: string, newStatus: OrderStatus) {
   const supabase = await createSupabaseServerClient();
   
-  // First, update the parent order status
+  let finalStatus = newStatus;
+
+  // If marking as delivered, check if it was paid by UPI and auto-complete it
+  if (newStatus === 'delivered') {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('payment_method')
+      .eq('id', orderId)
+      .single();
+
+    if (order?.payment_method === 'upi') {
+      finalStatus = 'completed';
+    }
+  }
+
   const { error: orderUpdateError } = await supabase
     .from('orders')
-    .update({ status: newStatus })
+    .update({ status: finalStatus })
     .eq('id', orderId);
 
   if (orderUpdateError) {
@@ -111,20 +121,34 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus)
     throw orderUpdateError;
   }
 
-  // Then, update all associated order items to the same status
   const { error: itemUpdateError } = await supabase
     .from('order_items')
-    .update({ status: newStatus })
+    .update({ status: finalStatus })
     .eq('order_id', orderId);
   
   if (itemUpdateError) {
-    // Note: In a real app, you might want to handle this more gracefully,
-    // maybe by rolling back the parent order status update.
     console.error('Error updating order items status:', itemUpdateError);
     throw itemUpdateError;
   }
   
   revalidatePath('/vendor/dashboard/orders');
-  // Revalidate the public order tracking page as well.
   revalidatePath(`/orders/${orderId}`);
+}
+
+export async function markOrderAsPaid(orderId: string) {
+    const supabase = await createSupabaseServerClient();
+
+    const { error } = await supabase
+        .from('orders')
+        .update({ status: 'completed', payment_status: 'completed' })
+        .eq('id', orderId)
+        .eq('payment_method', 'cod'); // Only for COD orders
+
+    if (error) {
+        console.error('Error marking order as paid:', error);
+        throw error;
+    }
+
+    revalidatePath('/vendor/dashboard/orders');
+    revalidatePath(`/orders/${orderId}`);
 }
