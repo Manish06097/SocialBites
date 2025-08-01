@@ -189,10 +189,6 @@ export default function VendorOrdersPage() {
     startTransition(async () => {
       try {
         await updateOrderStatus(orderId, newStatus);
-        toast({
-          title: "Order Updated",
-          description: `Order has been marked as ${newStatus}.`,
-        })
       } catch (error) {
         toast({
           variant: "destructive",
