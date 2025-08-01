@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderStatus } from '@/app/vendor/actions';
 import { useToast } from '@/hooks/use-toast';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
@@ -124,26 +125,54 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
 export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stallId, setStallId] = useState<string | null>(null);
   const [isUpdating, startTransition] = useTransition();
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
 
-  const fetchOrders = useCallback(async () => {
-      setIsLoading(true);
-      const stallId = await getVendorStallId();
-      if (stallId) {
-        const fetchedOrders = await getVendorOrders(stallId);
-        setOrders(fetchedOrders);
+  const fetchOrders = useCallback(async (id: string) => {
+    const fetchedOrders = await getVendorOrders(id);
+    setOrders(fetchedOrders);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const initStall = async () => {
+      const id = await getVendorStallId();
+      setStallId(id);
+      if (id) {
+        fetchOrders(id);
       } else {
         console.error('Could not retrieve vendor stall ID.');
         setOrders([]);
+        setIsLoading(false);
       }
-      setIsLoading(false);
-  }, []);
+    };
+    initStall();
+  }, [fetchOrders]);
 
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    if (!stallId) return;
+
+    const channel = supabase
+      .channel(`public:orders:stall=${stallId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+            console.log('Realtime update received:', payload);
+            fetchOrders(stallId);
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) {
+            console.error(`Subscription error for stall ${stallId}:`, err);
+        }
+      });
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [stallId, supabase, fetchOrders]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     // Optimistic UI update
@@ -160,9 +189,6 @@ export default function VendorOrdersPage() {
           title: "Order Updated",
           description: `Order has been marked as ${newStatus}.`,
         })
-        // Optional: you can re-fetch here to ensure data consistency if needed,
-        // but optimistic update should handle most cases.
-        // await fetchOrders();
       } catch (error) {
         toast({
           variant: "destructive",
@@ -170,8 +196,9 @@ export default function VendorOrdersPage() {
           description: "Could not update the order status. Reverting changes.",
         })
         console.error('Failed to update order status:', error);
-        // Revert optimistic update on failure
-        fetchOrders();
+        if (stallId) {
+            fetchOrders(stallId);
+        }
       }
     });
   };
