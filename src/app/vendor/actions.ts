@@ -45,7 +45,11 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
     .select(`
       *,
       order_items (
-        *,
+        id,
+        quantity,
+        total_price,
+        customizations,
+        special_instructions,
         menu_items (
           name,
           image_url

@@ -18,12 +18,37 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, Bike, ChefHat } from 'lucide-react';
+import { CheckCircle, XCircle, Bike, ChefHat, MessageSquareQuote, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderStatus } from '@/app/vendor/actions';
 import { useToast } from '@/hooks/use-toast';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
+
+const OrderItemCustomizations = ({ customizations }: { customizations: any }) => {
+    if (!customizations || Object.keys(customizations).length === 0) return null;
+
+    const entries = Object.entries(customizations).flatMap(([key, value]) => {
+        if (Array.isArray(value)) {
+            return value.map(v => ({ title: key, value: v as string }));
+        }
+        return { title: key, value: value as string };
+    });
+
+    if (entries.length === 0) return null;
+
+    return (
+        <div className="text-xs text-muted-foreground pl-4 mt-1">
+            {entries.map((c, i) => (
+              <span key={i}>
+                {c.value}
+                {i < entries.length - 1 && ' • '}
+              </span>
+            ))}
+        </div>
+    );
+};
 
 const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void }) => {
   const [timeAgo, setTimeAgo] = useState('');
@@ -48,6 +73,7 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
   }, [order.created_at]);
 
   const overallStatus = order.status;
+  const isPaid = order.payment_method === 'upi' && order.payment_status === 'completed';
 
   return (
     <Card>
@@ -57,18 +83,29 @@ const OrderCard = ({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (o
                  <CardTitle className="text-xl">Order #{order.display_id.split('-').pop()}</CardTitle>
                  <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
             </div>
-            <div className="text-right">
-                <p className="font-bold text-lg">₹{order.total_amount.toFixed(2)}</p>
+            <div className="text-right space-y-1">
+                <Badge variant={isPaid ? "default" : "secondary"} className={cn(isPaid ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
+                    {isPaid ? "PAID" : "COD"}
+                </Badge>
                 {isClient ? <p className="text-xs text-muted-foreground">{timeAgo}</p> : <p className="text-xs text-muted-foreground">...</p>}
             </div>
         </div>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2">
+        <ul className="space-y-3">
             {order.order_items.map((item) => (
-                <li key={item.id} className="flex justify-between">
-                    <span>{item.menu_items?.name}</span>
-                    <span className="font-mono">x{item.quantity}</span>
+                <li key={item.id} className="text-sm">
+                    <div className="flex justify-between">
+                        <span className="font-semibold">{item.menu_items?.name}</span>
+                        <span className="font-mono font-semibold">x{item.quantity}</span>
+                    </div>
+                     <OrderItemCustomizations customizations={item.customizations} />
+                    {item.special_instructions && (
+                      <div className="mt-1 flex items-start gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
+                        <MessageSquareQuote className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs">{item.special_instructions}</p>
+                      </div>
+                    )}
                 </li>
             ))}
         </ul>
