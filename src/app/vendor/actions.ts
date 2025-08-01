@@ -3,7 +3,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Order, OrderStatus } from '@/lib/types';
+import { Order, OrderStatus, OrderItem } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
 export async function signOut() {
@@ -151,4 +151,30 @@ export async function markOrderAsPaid(orderId: string) {
 
     revalidatePath('/vendor/dashboard/orders');
     revalidatePath(`/orders/${orderId}`);
+}
+
+export async function getVendorReviews(stallId: string): Promise<OrderItem[]> {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+            id,
+            rating,
+            review,
+            created_at,
+            menu_items (
+                name,
+                image_url
+            )
+        `)
+        .eq('stall_id', stallId)
+        .or('rating.is.not.null,review.is.not.null')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching vendor reviews:', error);
+        return [];
+    }
+
+    return data as any as OrderItem[];
 }

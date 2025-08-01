@@ -11,7 +11,8 @@ import {
   Settings,
   QrCode,
   LogOut,
-  ClipboardList
+  ClipboardList,
+  Star
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import { signOut } from '../actions'
 const navItems = [
     { href: '/vendor/dashboard', icon: Home, label: 'Dashboard' },
     { href: '/vendor/dashboard/orders', icon: ClipboardList, label: 'Orders' },
+    { href: '/vendor/dashboard/reviews', icon: Star, label: 'Reviews' },
     { href: '/vendor/dashboard/menu', icon: Utensils, label: 'Menu' },
     { href: '/vendor/dashboard/profile', icon: Settings, label: 'Profile' },
     { href: '/vendor/dashboard/qr', icon: QrCode, label: 'QR Codes' },
