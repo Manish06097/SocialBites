@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, Bike, Utensils, ChefHat } from 'lucide-react';
+import { CheckCircle, XCircle, Bike, ChefHat } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderStatus } from '@/app/vendor/actions';
@@ -127,8 +127,7 @@ export default function VendorOrdersPage() {
   const [isUpdating, startTransition] = useTransition();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
       setIsLoading(true);
       const stallId = await getVendorStallId();
       if (stallId) {
@@ -139,33 +138,40 @@ export default function VendorOrdersPage() {
         setOrders([]);
       }
       setIsLoading(false);
-    };
-
-    fetchOrders();
-    // Removed setInterval for continuous refreshing as per user feedback
   }, []);
 
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    // Optimistic UI update
+    setOrders(prevOrders => 
+        prevOrders.map(order => 
+            order.id === orderId ? { ...order, status: newStatus } : order
+        )
+    );
+
     startTransition(async () => {
       try {
         await updateOrderStatus(orderId, newStatus);
-        // Re-fetch orders to reflect the changes
-        const stallId = await getVendorStallId();
-        if (stallId) {
-          const updatedOrders = await getVendorOrders(stallId);
-          setOrders(updatedOrders);
-        }
         toast({
           title: "Order Updated",
           description: `Order has been marked as ${newStatus}.`,
         })
+        // Optional: you can re-fetch here to ensure data consistency if needed,
+        // but optimistic update should handle most cases.
+        // await fetchOrders();
       } catch (error) {
         toast({
           variant: "destructive",
           title: "Update Failed",
-          description: "Could not update the order status.",
+          description: "Could not update the order status. Reverting changes.",
         })
         console.error('Failed to update order status:', error);
+        // Revert optimistic update on failure
+        fetchOrders();
       }
     });
   };
@@ -193,8 +199,8 @@ export default function VendorOrdersPage() {
     )
   }
 
-  const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'accepted');
-  const preparingOrders = orders.filter(o => o.status === 'preparing');
+  const pendingOrders = orders.filter(o => o.status === 'pending');
+  const preparingOrders = orders.filter(o => o.status === 'accepted' || o.status === 'preparing');
   const readyOrders = orders.filter(o => o.status === 'ready_for_pickup');
   const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'rejected');
 

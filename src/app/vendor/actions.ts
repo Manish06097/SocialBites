@@ -37,6 +37,9 @@ export async function getVendorStallId(): Promise<string | null> {
 
 export async function getVendorOrders(stallId: string): Promise<Order[]> {
   const supabase = createSupabaseServerClient();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Start of today in local time
+
   const { data, error } = await supabase
     .from('orders')
     .select(`
@@ -62,6 +65,7 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
             .eq('stall_id', stallId)
         ).data?.map(o => o.order_id) || []
     )
+    .gte('created_at', today.toISOString()) // Only fetch orders from today
     .order('created_at', { ascending: false });
 
   if (error) {
