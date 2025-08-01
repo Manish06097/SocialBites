@@ -156,12 +156,13 @@ export async function getVendorReviews(stallId: string): Promise<OrderItem[]> {
             review,
             created_at,
             menu_items (
+                id,
                 name,
                 image_url
             )
         `)
         .eq('stall_id', stallId)
-        .or('rating.is.not.null,review.is.not.null')
+        .or('rating.not.is.null,review.not.is.null')
         .order('created_at', { ascending: false });
 
     if (error) {

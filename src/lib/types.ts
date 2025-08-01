@@ -78,9 +78,11 @@ export interface OrderItem {
     customizations: Customization[] | null;
     special_instructions: string | null;
     status: OrderStatus;
+    created_at?: string;
     rating?: number | null;
     review?: string | null;
     menu_items: {
+        id: string;
         name: string;
         image_url: string;
     } | null;
