@@ -157,9 +157,13 @@ export default function VendorOrdersPage() {
 
     const channel = supabase
       .channel(`public:orders:stall=${stallId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, 
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, 
         (payload) => {
-            console.log('Realtime update received:', payload);
+            console.log('New order received:', payload);
+            toast({
+                title: "🎉 New Order!",
+                description: "You have a new order waiting for acceptance.",
+            });
             fetchOrders(stallId);
         }
       )
@@ -172,7 +176,7 @@ export default function VendorOrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stallId, supabase, fetchOrders]);
+  }, [stallId, supabase, fetchOrders, toast]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     // Optimistic UI update
