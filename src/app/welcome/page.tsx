@@ -9,9 +9,9 @@ import { User, LogIn } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 
-export default function WelcomePage() {
+function WelcomeContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -80,5 +80,13 @@ export default function WelcomePage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function WelcomePage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <WelcomeContent />
+        </Suspense>
     );
 }
