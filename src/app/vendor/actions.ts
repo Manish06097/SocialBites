@@ -36,7 +36,7 @@ export async function getVendorStallId(): Promise<string | null> {
 }
 
 export async function getVendorOrders(stallId: string): Promise<Order[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today in local time
 
@@ -74,29 +74,22 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
     return [];
   }
 
-  const filteredOrders = data.filter(order => order.order_items && order.order_items.length > 0);
+  // Ensure every order has an order_items array
+  const ordersWithItems = data.map(order => ({
+      ...order,
+      order_items: order.order_items || [],
+  }));
+
+  const filteredOrders = ordersWithItems.filter(order => order.order_items && order.order_items.length > 0);
 
   return filteredOrders as any as Order[];
 }
 
 
-export async function updateOrderItemStatus(orderItemId: string, newStatus: OrderStatus) {
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from('order_items')
-    .update({ status: newStatus })
-    .eq('id', orderItemId);
-
-  if (error) {
-    console.error('Error updating order item status:', error);
-    throw error;
-  }
-}
-
 export async function updateOrderStatus(orderId: string, newStatus: OrderStatus) {
   const supabase = await createSupabaseServerClient();
   
-  let finalStatus = newStatus;
+  let finalStatus: OrderStatus = newStatus;
 
   // If marking as delivered, check if it was paid by UPI and auto-complete it
   if (newStatus === 'delivered') {
@@ -154,7 +147,7 @@ export async function markOrderAsPaid(orderId: string) {
 }
 
 export async function getVendorReviews(stallId: string): Promise<OrderItem[]> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
         .from('order_items')
         .select(`
