@@ -12,14 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QrCode, Image as ImageIcon, LogOut } from 'lucide-react';
+import { QrCode, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { signOut } from '../../actions';
-import { updateStallDetails } from './actions';
+import { updateStallDetails, updateStallImageUrl } from './actions';
 import { SubmitButton } from './submit-button';
 import { useToast } from '@/hooks/use-toast';
 import type { Stall } from '@/lib/types';
+import { ImageUploader } from '@/components/ImageUploader';
 
 
 interface VendorProfileClientPageProps {
@@ -83,24 +83,25 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label>Stall Logo (1:1 ratio)</Label>
-                    <div className="flex items-center gap-4">
-                        <Image src={stall.logo_url || "https://placehold.co/100x100.png"} alt="Stall Logo" width={64} height={64} className="rounded-full bg-muted" data-ai-hint="company logo" />
-                        <Button variant="outline" disabled>
-                            <ImageIcon className="mr-2 h-4 w-4" />
-                            Change Logo
-                        </Button>
-                    </div>
+                    <Label>Stall Logo (1:1 ratio recommended)</Label>
+                     <ImageUploader
+                        currentImageUrl={stall.logo_url}
+                        onUploadComplete={async (url) => await updateStallImageUrl({ stallId: stall.id, imageUrl: url, type: 'logo' })}
+                        bucket="stall-branding"
+                        folderPath={`${stall.id}/logos`}
+                        imageHint="company logo"
+                    />
                 </div>
                  <div className="space-y-2">
-                    <Label>Stall Banner (2:1 ratio)</Label>
-                    <div className="flex items-center gap-4">
-                         <Image src={stall.banner_url || "https://placehold.co/600x300.png"} alt="Stall Banner" width={128} height={64} className="rounded-md bg-muted aspect-video object-cover" data-ai-hint="food stall" />
-                        <Button variant="outline" disabled>
-                             <ImageIcon className="mr-2 h-4 w-4" />
-                            Change Banner
-                        </Button>
-                    </div>
+                    <Label>Stall Banner (2:1 ratio recommended)</Label>
+                    <ImageUploader
+                        currentImageUrl={stall.banner_url}
+                        onUploadComplete={async (url) => await updateStallImageUrl({ stallId: stall.id, imageUrl: url, type: 'banner' })}
+                        bucket="stall-branding"
+                        folderPath={`${stall.id}/banners`}
+                        imageHint="food stall"
+                        className="aspect-video"
+                    />
                 </div>
             </CardContent>
         </Card>

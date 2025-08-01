@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, PlusCircle, AlertTriangle, Save, X } from 'lucide-react';
+import { Trash2, PlusCircle, AlertTriangle, Save, X, Image as ImageIcon } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Combobox } from './ui/combobox';
@@ -32,18 +32,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { ImageUploader } from './ImageUploader';
+import { updateMenuItemImage } from '@/app/vendor/dashboard/menu/actions';
+
 
 interface EditMenuItemDialogProps {
-  item: Partial<MenuItem>;
+  item: Partial<MenuItem> & { isNew?: boolean };
+  stallId: string;
   allCategories: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (updatedItem: Partial<MenuItem>) => void;
+  onSave: (updatedItem: Partial<MenuItem> & {isNew?: boolean}) => Promise<{success: boolean, newItemId?: string | undefined}>;
   onDelete: (itemId: string) => void;
   isPending: boolean;
 }
 
-export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, onSave, onDelete, isPending }: EditMenuItemDialogProps) {
+export function EditMenuItemDialog({ item, stallId, allCategories, open, onOpenChange, onSave, onDelete, isPending }: EditMenuItemDialogProps) {
   const [editedItem, setEditedItem] = useState(item);
 
   useEffect(() => {
@@ -95,8 +99,17 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
      handleFieldChange('customizations', newCustomizations);
   }
 
-  const handleSave = () => {
-    onSave(editedItem);
+  const handleSave = async () => {
+    // If it's a new item, save it first to get an ID for image upload.
+    if (isNew) {
+      const result = await onSave(editedItem);
+      if (result.success && result.newItemId) {
+        setEditedItem(prev => ({...prev, id: result.newItemId, isNew: false}));
+        // Do not close the dialog, allow image upload now.
+      }
+    } else {
+      await onSave(editedItem);
+    }
   };
 
   const handleDelete = () => {
@@ -105,7 +118,7 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
       }
   }
   
-  const isNew = 'isNew' in item && item.isNew;
+  const isNew = 'isNew' in editedItem && editedItem.isNew;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,6 +131,25 @@ export function EditMenuItemDialog({ item, allCategories, open, onOpenChange, on
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
         <fieldset disabled={isPending} className="space-y-6 py-4 group">
+          <div className="space-y-2">
+            <Label>Item Image</Label>
+            <ImageUploader 
+              currentImageUrl={editedItem.imageUrl}
+              onUploadComplete={async (url) => {
+                if (editedItem.id) {
+                    await updateMenuItemImage(editedItem.id, url);
+                    handleFieldChange('imageUrl', url);
+                }
+              }}
+              bucket="menu-item-images"
+              folderPath={`${stallId}/items`}
+              disabled={isNew || isPending}
+              imageHint='food item'
+              className='aspect-[4/3]'
+            />
+             {isNew && <p className="text-xs text-muted-foreground">You must save the item once before uploading an image.</p>}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="name">Item Name</Label>

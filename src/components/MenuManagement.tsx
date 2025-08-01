@@ -30,7 +30,7 @@ interface MenuManagementProps {
 
 export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProps) {
   const [menuItems, setMenuItems] = useState(initialMenuItems);
-  const [editingItem, setEditingItem] = useState<Partial<MenuItem> & { isNew?: boolean } | null>(null);
+  const [editingItem, setEditingItem] = useState<(Partial<MenuItem> & { isNew?: boolean }) | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
@@ -91,26 +91,39 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
         available: true,
         isNew: true,
         customizations: [],
+        imageUrl: 'https://placehold.co/400x300.png',
     });
   };
   
-  const handleSaveChanges = (updatedItem: Partial<MenuItem>) => {
-    startTransition(async () => {
-        const result = await saveMenuItem({...updatedItem, stall_id: stallId });
-        if (result?.error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error saving item',
-                description: result.error,
-            });
-        } else {
-             toast({
-                title: 'Success!',
-                description: `Menu item "${updatedItem.name}" has been saved.`,
-            });
-            setEditingItem(null);
-        }
+  const handleSaveChanges = async (updatedItem: Partial<MenuItem> & {isNew?: boolean}) => {
+    let success = false;
+    let newItemId: string | undefined = undefined;
+
+    await new Promise(resolve => {
+        startTransition(async () => {
+            const result = await saveMenuItem({ ...updatedItem, stall_id: stallId });
+            if (result?.error) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error saving item',
+                    description: result.error,
+                });
+            } else {
+                toast({
+                    title: 'Success!',
+                    description: `Menu item "${updatedItem.name}" has been saved.`,
+                });
+                if (!updatedItem.id) { // Only close if it's a final save, not the initial save of a new item
+                  setEditingItem(null);
+                }
+                success = true;
+                newItemId = result.newItemId;
+            }
+            resolve(true);
+        });
     });
+
+    return { success, newItemId };
   }
 
   const handleDeleteItem = (itemId: string) => {
@@ -198,6 +211,7 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
       {editingItem && (
         <EditMenuItemDialog 
             item={editingItem}
+            stallId={stallId}
             allCategories={allCategories}
             open={!!editingItem} 
             onOpenChange={(open) => !open && setEditingItem(null)}

@@ -11,7 +11,7 @@ export type MenuItemFormData = Omit<MenuItem, 'id' | 'stall_id' | 'imageUrl' | '
     stall_id: string;
 };
 
-export async function saveMenuItem(formData: MenuItemFormData) {
+export async function saveMenuItem(formData: MenuItemFormData & { imageUrl?: string }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,7 +19,7 @@ export async function saveMenuItem(formData: MenuItemFormData) {
     return { error: 'You must be logged in to save a menu item.' };
   }
 
-  const { id, stall_id, name, description, price, category, available, customizations } = formData;
+  const { id, stall_id, name, description, price, category, available, customizations, imageUrl } = formData;
   
   // Verify the user owns the stall they are trying to edit
    const { data: stall, error: stallError } = await supabase
@@ -35,7 +35,7 @@ export async function saveMenuItem(formData: MenuItemFormData) {
   }
 
 
-  const itemToSave = {
+  const itemToSave: any = {
     stall_id: stall_id,
     name,
     description,
@@ -43,13 +43,19 @@ export async function saveMenuItem(formData: MenuItemFormData) {
     category,
     available,
     customizations,
-    image_url: 'https://placehold.co/400x300.png', // Placeholder for now
     updated_at: new Date().toISOString(),
   };
 
+  // Only include imageUrl if it's being updated.
+  if (imageUrl) {
+    itemToSave.image_url = imageUrl;
+  }
+
+  let newItemId = id;
+
   if (id) {
     // Update existing item
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('menu_items')
       .update(itemToSave)
       .eq('id', id);
@@ -60,20 +66,66 @@ export async function saveMenuItem(formData: MenuItemFormData) {
     }
   } else {
     // Create new item
-    const { data, error } = await supabase
+    const { data: newData, error } = await supabase
       .from('menu_items')
-      .insert(itemToSave);
+      .insert({ ...itemToSave, image_url: imageUrl || 'https://placehold.co/400x300.png' })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('Error creating menu item:', error);
       return { error: error.message };
     }
+    newItemId = newData.id;
   }
 
   // Revalidate the path to show the new data
   revalidatePath('/vendor/dashboard/menu');
 
-  return { success: true };
+  return { success: true, newItemId };
+}
+
+
+export async function updateMenuItemImage(itemId: string, imageUrl: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: 'You must be logged in.' };
+    }
+
+    const { data: menuItem, error: fetchError } = await supabase
+        .from('menu_items')
+        .select('stall_id')
+        .eq('id', itemId)
+        .single();
+    
+    if(fetchError || !menuItem) {
+        return { error: 'Menu item not found.' };
+    }
+
+    const { data: stall, error: stallError } = await supabase
+        .from('stalls')
+        .select('id')
+        .eq('id', menuItem.stall_id)
+        .eq('owner_id', user.id)
+        .single();
+    
+    if(stallError || !stall) {
+        return { error: 'You do not have permission to edit this item.' };
+    }
+
+    const { error: updateError } = await supabase
+        .from('menu_items')
+        .update({ image_url: imageUrl, updated_at: new Date().toISOString() })
+        .eq('id', itemId);
+    
+    if (updateError) {
+        return { error: updateError.message };
+    }
+    
+    revalidatePath('/vendor/dashboard/menu');
+    return { success: true };
 }
 
 
@@ -120,4 +172,3 @@ export async function deleteMenuItem(itemId: string) {
     revalidatePath('/vendor/dashboard/menu');
     return { success: true };
 }
-
