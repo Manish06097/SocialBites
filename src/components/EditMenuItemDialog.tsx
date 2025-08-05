@@ -33,7 +33,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { ImageUploader } from './ImageUploader';
-import { updateMenuItemImage } from '@/app/vendor/dashboard/menu/actions';
 
 
 interface EditMenuItemDialogProps {
@@ -45,13 +44,13 @@ interface EditMenuItemDialogProps {
   onSave: (updatedItem: Partial<MenuItem> & {isNew?: boolean}) => Promise<{success: boolean, newItemId?: string | undefined}>;
   onDelete: (itemId: string) => void;
   isPending: boolean;
+  setIsGloballyPending: (pending: boolean) => void;
 }
 
-export function EditMenuItemDialog({ item, stallId, allCategories, open, onOpenChange, onSave, onDelete, isPending }: EditMenuItemDialogProps) {
+export function EditMenuItemDialog({ item, stallId, allCategories, open, onOpenChange, onSave, onDelete, isPending, setIsGloballyPending }: EditMenuItemDialogProps) {
   const [editedItem, setEditedItem] = useState(item);
 
   useEffect(() => {
-    // Deep copy of item to avoid direct mutation
     setEditedItem(JSON.parse(JSON.stringify(item)));
   }, [item]);
 
@@ -100,15 +99,15 @@ export function EditMenuItemDialog({ item, stallId, allCategories, open, onOpenC
   }
 
   const handleSave = async () => {
-    // If it's a new item, save it first to get an ID for image upload.
-    if (isNew) {
-      const result = await onSave(editedItem);
-      if (result.success && result.newItemId) {
+    const isNewItem = 'isNew' in editedItem && editedItem.isNew;
+    const result = await onSave(editedItem);
+    // Only close if it's NOT a new item being saved for the first time.
+    // This allows image upload after the first save.
+    if (result.success && !isNewItem) {
+        onOpenChange(false);
+    } else if (result.success && isNewItem && result.newItemId) {
+        // If it was a new item, update its state with the new ID and remove the 'isNew' flag
         setEditedItem(prev => ({...prev, id: result.newItemId, isNew: false}));
-        // Do not close the dialog, allow image upload now.
-      }
-    } else {
-      await onSave(editedItem);
     }
   };
 
@@ -137,10 +136,11 @@ export function EditMenuItemDialog({ item, stallId, allCategories, open, onOpenC
               currentImageUrl={editedItem.imageUrl}
               onUploadComplete={async (url) => {
                 if (editedItem.id) {
-                    await updateMenuItemImage(editedItem.id, url);
+                    await onSave({...editedItem, imageUrl: url});
                     handleFieldChange('imageUrl', url);
                 }
               }}
+              setParentPending={setIsGloballyPending}
               bucket="menu-item-images"
               folderPath={`${stallId}/items`}
               disabled={isNew || isPending}

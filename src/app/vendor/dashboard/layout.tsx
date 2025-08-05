@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import VendorBottomNavBar from '@/components/VendorBottomNavBar'
 import { signOut } from '../actions'
+import { LogoutButton } from '@/components/LogoutButton'
 
 const navItems = [
     { href: '/vendor/dashboard', icon: Home, label: 'Dashboard' },
@@ -68,12 +69,7 @@ export default function DashboardLayout({
             </nav>
           </div>
           <div className="mt-auto p-4">
-             <form action={signOut}>
-                <Button type="submit" size="sm" variant="ghost" className="w-full justify-start">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                </Button>
-             </form>
+            <LogoutButton action={signOut} />
           </div>
         </div>
       </div>
