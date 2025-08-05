@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Session } from '@supabase/supabase-js';
 
 const OrderItemCustomizations = ({ customizations }: { customizations: any }) => {
     if (!customizations || Object.keys(customizations).length === 0) return null;
@@ -51,7 +52,7 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void }) => {
+const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
 
@@ -115,37 +116,37 @@ const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUp
       <CardFooter className="py-3 px-4">
         {overallStatus === 'pending' && (
             <div className="w-full flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')}>
+                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')} disabled={isUpdating}>
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                 </Button>
-                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')}>
+                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')} disabled={isUpdating}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Accept
                 </Button>
             </div>
         )}
         {overallStatus === 'accepted' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isUpdating}>
                 <ChefHat className="mr-2 h-4 w-4" />
                 Mark as Preparing
             </Button>
         )}
         {overallStatus === 'preparing' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')}>
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')} disabled={isUpdating}>
                 <CookingPot className="mr-2 h-4 w-4" />
                 Mark as Ready
             </Button>
         )}
         {overallStatus === 'ready_for_pickup' && (
-             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')}>
+             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isUpdating}>
                 <PackageCheck className="mr-2 h-4 w-4" />
                 Mark as Delivered
             </Button>
         )}
         {overallStatus === 'delivered' && (
             order.payment_method === 'cod' ? (
-                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)}>
+                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
                     <DollarSign className="mr-2 h-4 w-4" />
                     Mark as Paid (COD)
                 </Button>
@@ -177,6 +178,7 @@ function OrdersDisplay() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stallId, setStallId] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isUpdating, startTransition] = useTransition();
   const { toast } = useToast();
   const supabase = createSupabaseBrowserClient();
@@ -191,6 +193,26 @@ function OrdersDisplay() {
     setOrders(fetchedOrders);
     setIsLoading(false);
   }, []);
+  
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event);
+      setSession(session);
+      // If the token has been refreshed, we might need to update the realtime client
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        supabase.realtime.setAuth(session?.access_token || null);
+      }
+    });
+
+    // Also get the initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     const initStall = async () => {
@@ -209,7 +231,7 @@ function OrdersDisplay() {
 
 
   useEffect(() => {
-    if (!stallId) return;
+    if (!stallId || !session) return;
 
     const channel = supabase
       .channel(`public:orders:stall=${stallId}`)
@@ -233,7 +255,7 @@ function OrdersDisplay() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stallId, supabase, fetchOrders, toast, audio]);
+  }, [stallId, supabase, fetchOrders, toast, audio, session]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     const originalOrders = orders;
@@ -331,22 +353,22 @@ function OrdersDisplay() {
         </TabsList>
         <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
         <TabsContent value="ready" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
+             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
           </div>
         </TabsContent>
         <TabsContent value="delivered" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered or completed orders yet today.</p>}
+             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered or completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
@@ -375,3 +397,5 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
+
+    
