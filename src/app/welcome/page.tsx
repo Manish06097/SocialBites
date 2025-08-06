@@ -9,7 +9,8 @@ import { User, LogIn } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState, Suspense } from 'react'; // Import Suspense
+import { useState, Suspense } from 'react';
+
 
 function WelcomeContent() {
     const router = useRouter();
