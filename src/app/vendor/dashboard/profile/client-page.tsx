@@ -15,11 +15,12 @@ import { Label } from '@/components/ui/label';
 import { QrCode, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from '../../actions';
-import { updateStallDetails, updateStallImageUrl } from './actions';
+import { updateStallDetails } from './actions';
 import { SubmitButton } from './submit-button';
 import { useToast } from '@/hooks/use-toast';
 import type { Stall } from '@/lib/types';
 import { ImageUploader } from '@/components/ImageUploader';
+import { LogoutButton } from '@/components/LogoutButton';
 
 
 interface VendorProfileClientPageProps {
@@ -31,7 +32,7 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
   const formRef = useRef<HTMLFormElement>(null);
 
   const initialState = { message: '', errors: {} };
-  const [state, dispatch] = useActionState(updateStallDetails, initialState);
+  const [state, dispatch, isPending] = useActionState(updateStallDetails, initialState);
 
   useEffect(() => {
     if (state.message) {
@@ -66,11 +67,11 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="stallName">Stall Name</Label>
-              <Input id="stallName" name="stallName" defaultValue={stall.name || ''} />
+              <Input id="stallName" name="stallName" defaultValue={stall.name || ''} disabled={isPending} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tags">Tags</Label>
-              <Input id="tags" name="tags" defaultValue={stall.tags?.join(', ') || ''} placeholder="e.g. Pizza, Italian, Fast Food" />
+              <Input id="tags" name="tags" defaultValue={stall.tags?.join(', ') || ''} placeholder="e.g. Pizza, Italian, Fast Food" disabled={isPending} />
               <p className="text-xs text-muted-foreground">Comma-separated tags for cuisine type.</p>
             </div>
           </CardContent>
@@ -86,21 +87,25 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
                     <Label>Stall Logo (1:1 ratio recommended)</Label>
                      <ImageUploader
                         currentImageUrl={stall.logo_url}
-                        onUploadComplete={async (url) => await updateStallImageUrl({ stallId: stall.id, imageUrl: url, type: 'logo' })}
+                        onUploadComplete={async (url) => { /* Logic is now handled inside ImageUploader */ }}
                         bucket="stall-branding"
                         folderPath={`${stall.id}/logos`}
+                        disabled={isPending}
                         imageHint="company logo"
+                        dbUpdateAction={(url) => updateStallDetails(state, stall.id, { logoUrl: url })}
                     />
                 </div>
                  <div className="space-y-2">
                     <Label>Stall Banner (2:1 ratio recommended)</Label>
                     <ImageUploader
                         currentImageUrl={stall.banner_url}
-                        onUploadComplete={async (url) => await updateStallImageUrl({ stallId: stall.id, imageUrl: url, type: 'banner' })}
+                        onUploadComplete={async (url) => { /* Logic is now handled inside ImageUploader */ }}
                         bucket="stall-branding"
                         folderPath={`${stall.id}/banners`}
+                        disabled={isPending}
                         imageHint="food stall"
                         className="aspect-video"
+                        dbUpdateAction={(url) => updateStallDetails(state, stall.id, { bannerUrl: url })}
                     />
                 </div>
             </CardContent>
@@ -127,10 +132,7 @@ export default function VendorProfileClientPage({ stall }: VendorProfileClientPa
                 <CardDescription>Log out of your vendor account.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button type="submit" variant="outline" className="w-full md:w-auto" formAction={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                </Button>
+                <LogoutButton action={signOut} />
             </CardContent>
         </Card>
       </div>

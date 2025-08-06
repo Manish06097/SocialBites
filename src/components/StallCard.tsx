@@ -49,7 +49,7 @@ export default function StallCard({ stall }: StallCardProps) {
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {stall.tags.map((tag) => (
+              {stall.tags.slice(0, 3).map((tag) => (
                 <Badge key={tag} variant="secondary" className="font-normal">
                   {tag}
                 </Badge>

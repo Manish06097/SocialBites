@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from '@/components/StarRating';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function StallPage() {
   const params = useParams();
@@ -21,6 +22,7 @@ export default function StallPage() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [stall, setStall] = useState<Stall | null>(null);
   const [loading, setLoading] = useState(true);
+  const [largeImageView, setLargeImageView] = useState<string | null>(null);
 
   const { setSelectedFoodCourt } = useFoodCourt();
 
@@ -86,7 +88,7 @@ export default function StallPage() {
                 alt={`${stall.name} banner`}
                 fill
                 style={{objectFit: 'cover'}}
-                className="bg-muted"
+                className="bg-muted object-cover"
                 data-ai-hint="food stall"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -135,7 +137,7 @@ export default function StallPage() {
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {category.items.map((item) => (
                 <Card key={item.id} className="flex flex-col overflow-hidden">
-                  <div className="relative">
+                  <button className="relative block w-full" onClick={() => setLargeImageView(item.imageUrl)}>
                     <Image
                       src={item.imageUrl}
                       alt={item.name}
@@ -144,7 +146,7 @@ export default function StallPage() {
                       className="h-40 w-full object-cover md:h-48"
                       data-ai-hint="food item"
                     />
-                  </div>
+                  </button>
                   <CardHeader>
                     <CardTitle className="font-headline text-xl">{item.name}</CardTitle>
                   </CardHeader>
@@ -182,6 +184,21 @@ export default function StallPage() {
             open={!!selectedItem} 
             onOpenChange={(open) => !open && setSelectedItem(null)}
         />
+      )}
+
+      {largeImageView && (
+        <Dialog open={!!largeImageView} onOpenChange={(open) => !open && setLargeImageView(null)}>
+            <DialogContent className="max-w-3xl p-0">
+                 <Image
+                    src={largeImageView}
+                    alt="Enlarged menu item"
+                    width={800}
+                    height={600}
+                    className="w-full h-auto object-contain rounded-lg"
+                    data-ai-hint="food item"
+                  />
+            </DialogContent>
+        </Dialog>
       )}
     </>
   );

@@ -32,6 +32,7 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
   const [menuItems, setMenuItems] = useState(initialMenuItems);
   const [editingItem, setEditingItem] = useState<(Partial<MenuItem> & { isNew?: boolean }) | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isGloballyPending, setIsGloballyPending] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -61,7 +62,6 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
     
     const updatedItem = { ...itemToUpdate, available: newAvailability };
     
-    // Optimistically update UI
     setMenuItems(prev => prev.map(item => item.id === itemId ? updatedItem : item));
 
     startTransition(async () => {
@@ -72,8 +72,7 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
           title: 'Error updating item',
           description: result.error,
         });
-        // Revert optimistic update
-         setMenuItems(prev => prev.map(item => item.id === itemId ? itemToUpdate : item));
+        setMenuItems(prev => prev.map(item => item.id === itemId ? itemToUpdate : item));
       }
     });
   };
@@ -95,36 +94,57 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
     });
   };
   
-  const handleSaveChanges = async (updatedItem: Partial<MenuItem> & {isNew?: boolean}) => {
+ const handleSaveChanges = async (updatedItemFromDialog: Partial<MenuItem> & {isNew?: boolean}) => {
     let success = false;
     let newItemId: string | undefined = undefined;
 
-    await new Promise(resolve => {
+    // Use a temporary variable to not mutate the dialog's state directly
+    const itemToSave = { ...updatedItemFromDialog };
+
+    await new Promise<void>(resolve => {
         startTransition(async () => {
-            const result = await saveMenuItem({ ...updatedItem, stall_id: stallId });
-            if (result?.error) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error saving item',
-                    description: result.error,
-                });
-            } else {
-                toast({
-                    title: 'Success!',
-                    description: `Menu item "${updatedItem.name}" has been saved.`,
-                });
-                if (!updatedItem.id) { // Only close if it's a final save, not the initial save of a new item
-                  setEditingItem(null);
+            try {
+                const result = await saveMenuItem({ ...itemToSave, stall_id: stallId });
+
+                if (result?.error) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error saving item',
+                        description: result.error,
+                    });
+                } else {
+                    toast({
+                        title: 'Success!',
+                        description: `Menu item "${itemToSave.name}" has been saved.`,
+                    });
+
+                    // Update local state based on result
+                    setMenuItems(prev => {
+                        const exists = prev.some(i => i.id === result.newItemId);
+                        if (exists) {
+                            return prev.map(i => i.id === result.newItemId ? { ...i, ...itemToSave, id: result.newItemId! } : i);
+                        } else {
+                            return [...prev, { ...itemToSave, id: result.newItemId! } as MenuItem];
+                        }
+                    });
+                    
+                    success = true;
+                    newItemId = result.newItemId;
                 }
-                success = true;
-                newItemId = result.newItemId;
+            } catch (e: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'A critical error occurred',
+                    description: e.message,
+                });
+            } finally {
+                resolve();
             }
-            resolve(true);
         });
     });
 
     return { success, newItemId };
-  }
+}
 
   const handleDeleteItem = (itemId: string) => {
     startTransition(async () => {
@@ -140,16 +160,19 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
                 title: 'Item Deleted',
                 description: `The menu item has been successfully deleted.`,
             });
+            setMenuItems(prev => prev.filter(item => item.id !== itemId));
             setEditingItem(null);
         }
     });
   }
 
+  const anyPending = isPending || isGloballyPending;
+
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
-        <Button onClick={handleAddNewItem} disabled={isPending}>
+        <Button onClick={handleAddNewItem} disabled={anyPending}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Add New Item
         </Button>
@@ -186,16 +209,16 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
                                      <div className="flex items-center space-x-2 mt-2">
                                         <Switch 
                                             id={`available-${item.id}`} 
-                                            checked={item.available !== false} // Default to available if undefined
+                                            checked={item.available !== false}
                                             onCheckedChange={(checked) => handleAvailabilityChange(item.id, checked)}
-                                            disabled={isPending}
+                                            disabled={anyPending}
                                         />
                                         <Label htmlFor={`available-${item.id}`} className="text-xs text-muted-foreground">
                                             {item.available !== false ? 'Available' : 'Sold Out'}
                                         </Label>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => handleEditItem(item)} disabled={isPending}>
+                                <Button variant="outline" size="sm" onClick={() => handleEditItem(item)} disabled={anyPending}>
                                     <Pencil className="mr-2 h-4 w-4" />
                                     Edit
                                 </Button>
@@ -217,7 +240,8 @@ export function MenuManagement({ initialMenuItems, stallId }: MenuManagementProp
             onOpenChange={(open) => !open && setEditingItem(null)}
             onSave={handleSaveChanges}
             onDelete={handleDeleteItem}
-            isPending={isPending}
+            isPending={anyPending}
+            setIsGloballyPending={setIsGloballyPending}
         />
       )}
     </>

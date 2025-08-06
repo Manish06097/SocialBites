@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useCallback } from 'react';
+import { useState, useEffect, useTransition, useCallback, Suspense } from 'react';
 import {
   Card,
   CardContent,
@@ -25,6 +25,8 @@ import { getVendorStallId, getVendorOrders, updateOrderStatus, markOrderAsPaid }
 import { useToast } from '@/hooks/use-toast';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Session } from '@supabase/supabase-js';
 
 const OrderItemCustomizations = ({ customizations }: { customizations: any }) => {
     if (!customizations || Object.keys(customizations).length === 0) return null;
@@ -50,7 +52,7 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void }) => {
+const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
 
@@ -73,7 +75,7 @@ const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUp
   }, [order.created_at]);
 
   const overallStatus = order.status;
-  const isPaid = order.payment_method === 'upi' || order.status === 'completed';
+  const isPaid = order.payment_method === 'upi' || order.payment_status === 'completed';
 
   return (
     <Card>
@@ -114,37 +116,37 @@ const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUp
       <CardFooter className="py-3 px-4">
         {overallStatus === 'pending' && (
             <div className="w-full flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')}>
+                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')} disabled={isUpdating}>
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                 </Button>
-                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')}>
+                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')} disabled={isUpdating}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Accept
                 </Button>
             </div>
         )}
         {overallStatus === 'accepted' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')}>
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isUpdating}>
                 <ChefHat className="mr-2 h-4 w-4" />
                 Mark as Preparing
             </Button>
         )}
         {overallStatus === 'preparing' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')}>
+            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')} disabled={isUpdating}>
                 <CookingPot className="mr-2 h-4 w-4" />
                 Mark as Ready
             </Button>
         )}
         {overallStatus === 'ready_for_pickup' && (
-             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')}>
+             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isUpdating}>
                 <PackageCheck className="mr-2 h-4 w-4" />
                 Mark as Delivered
             </Button>
         )}
         {overallStatus === 'delivered' && (
             order.payment_method === 'cod' ? (
-                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)}>
+                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
                     <DollarSign className="mr-2 h-4 w-4" />
                     Mark as Paid (COD)
                 </Button>
@@ -172,19 +174,45 @@ const OrderCard = ({ order, onUpdateStatus, onMarkAsPaid }: { order: Order; onUp
   )
 }
 
-export default function VendorOrdersPage() {
+function OrdersDisplay() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stallId, setStallId] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isUpdating, startTransition] = useTransition();
   const { toast } = useToast();
   const supabase = createSupabaseBrowserClient();
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    setAudio(new Audio('/notification.mp3'));
+  }, []);
 
   const fetchOrders = useCallback(async (id: string) => {
     const fetchedOrders = await getVendorOrders(id);
     setOrders(fetchedOrders);
     setIsLoading(false);
   }, []);
+  
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event);
+      setSession(session);
+      // If the token has been refreshed, we might need to update the realtime client
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        supabase.realtime.setAuth(session?.access_token || null);
+      }
+    });
+
+    // Also get the initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     const initStall = async () => {
@@ -203,7 +231,7 @@ export default function VendorOrdersPage() {
 
 
   useEffect(() => {
-    if (!stallId) return;
+    if (!stallId || !session) return;
 
     const channel = supabase
       .channel(`public:orders:stall=${stallId}`)
@@ -214,6 +242,7 @@ export default function VendorOrdersPage() {
                 title: "🎉 New Order!",
                 description: "You have a new order waiting for acceptance.",
             });
+            audio?.play().catch(e => console.error("Error playing notification sound:", e));
             fetchOrders(stallId);
         }
       )
@@ -226,9 +255,10 @@ export default function VendorOrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stallId, supabase, fetchOrders, toast]);
+  }, [stallId, supabase, fetchOrders, toast, audio, session]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const originalOrders = orders;
     setOrders(prevOrders => 
         prevOrders.map(order => 
             order.id === orderId ? { ...order, status: newStatus } : order
@@ -238,19 +268,19 @@ export default function VendorOrdersPage() {
     startTransition(async () => {
       try {
         await updateOrderStatus(orderId, newStatus);
+        // No success toast for better UX, the card moves column instead
         if (stallId) {
-            fetchOrders(stallId); // Re-sync to get the final state from DB
+            // Re-sync to get the final state from DB, especially for auto-completion
+            fetchOrders(stallId); 
         }
       } catch (error) {
         toast({
           variant: "destructive",
           title: "Update Failed",
-          description: "Could not update the order status. Reverting changes.",
+          description: "Could not update the order status. Please try again.",
         })
         console.error('Failed to update order status:', error);
-        if (stallId) {
-            fetchOrders(stallId);
-        }
+        setOrders(originalOrders);
       }
     });
   };
@@ -280,31 +310,26 @@ export default function VendorOrdersPage() {
   
   if (isLoading) {
     return (
-        <>
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h1 className="font-headline text-lg font-semibold md:text-2xl">
                 Order Management
                 </h1>
             </div>
-            <Tabs defaultValue="pending" className="mt-4">
-              <TabsList className="grid w-full grid-cols-4 h-auto">
-                <TabsTrigger value="pending">New</TabsTrigger>
-                <TabsTrigger value="preparing">Preparing</TabsTrigger>
-                <TabsTrigger value="ready">Ready</TabsTrigger>
-                <TabsTrigger value="delivered">Delivered</TabsTrigger>
-              </TabsList>
-               <TabsContent value="pending" className="mt-4">
-                  <p className="text-muted-foreground col-span-full text-center py-8">Loading orders...</p>
-               </TabsContent>
-            </Tabs>
-        </>
+            <Skeleton className="h-12 w-full" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
     )
   }
 
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const preparingOrders = orders.filter(o => o.status === 'accepted' || o.status === 'preparing');
   const readyOrders = orders.filter(o => o.status === 'ready_for_pickup');
-  const deliveredOrders = orders.filter(o => o.status === 'delivered' || o.status === 'completed' || o.status === 'rejected');
+  const deliveredOrders = orders.filter(o => ['delivered', 'completed', 'rejected'].includes(o.status));
 
   return (
     <>
@@ -328,25 +353,49 @@ export default function VendorOrdersPage() {
         </TabsList>
         <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
         <TabsContent value="ready" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
+             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
           </div>
         </TabsContent>
         <TabsContent value="delivered" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered orders yet today.</p>}
+             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={handleUpdateOrderStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered or completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
     </>
   )
 }
+
+export default function VendorOrdersPage() {
+  return (
+    <Suspense fallback={
+       <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h1 className="font-headline text-lg font-semibold md:text-2xl">
+                Order Management
+                </h1>
+            </div>
+            <Skeleton className="h-12 w-full" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
+    }>
+      <OrdersDisplay />
+    </Suspense>
+  )
+}
+
+    

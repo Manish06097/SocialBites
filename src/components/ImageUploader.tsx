@@ -8,10 +8,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ImageIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { compressImage } from '@/lib/image-compressor';
 
 interface ImageUploaderProps {
     currentImageUrl?: string | null;
     onUploadComplete: (url: string) => Promise<void>;
+    setParentPending?: (pending: boolean) => void;
+    dbUpdateAction?: (url: string) => Promise<any>;
     bucket: string;
     folderPath: string;
     disabled?: boolean;
@@ -22,6 +25,8 @@ interface ImageUploaderProps {
 export function ImageUploader({
     currentImageUrl,
     onUploadComplete,
+    setParentPending = () => {},
+    dbUpdateAction,
     bucket,
     folderPath,
     disabled = false,
@@ -38,41 +43,53 @@ export function ImageUploader({
         if (!file) return;
 
         setUploading(true);
+        setParentPending(true);
 
-        const supabase = createSupabaseBrowserClient();
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `${folderPath}/${fileName}`;
+        try {
+            const compressedFile = await compressImage(file);
+            const supabase = createSupabaseBrowserClient();
+            const fileExt = compressedFile.name.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${folderPath}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false,
+            const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(filePath, compressedFile, {
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+
+            if (uploadError) {
+                throw new Error(uploadError.message);
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(filePath);
+
+            if (dbUpdateAction) {
+                await dbUpdateAction(publicUrl);
+            } else {
+                 await onUploadComplete(publicUrl);
+            }
+            
+
+            setLocalImageUrl(publicUrl);
+            toast({
+                title: 'Image Updated!',
+                description: 'Your new image has been saved.',
             });
 
-        if (uploadError) {
+        } catch (error: any) {
             toast({
                 variant: 'destructive',
                 title: 'Upload Failed',
-                description: uploadError.message,
+                description: error.message || 'Could not upload the image.',
             });
+        } finally {
             setUploading(false);
-            return;
+            setParentPending(false);
         }
-
-        const { data: { publicUrl } } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(filePath);
-        
-        await onUploadComplete(publicUrl);
-
-        setLocalImageUrl(publicUrl);
-        setUploading(false);
-        toast({
-            title: 'Image Updated!',
-            description: 'Your new image has been saved.',
-        });
     };
 
     return (
