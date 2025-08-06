@@ -12,9 +12,9 @@ export default function ScanPage() {
   const router = useRouter();
   
   // These would come from the QR code in a real scenario
-  const foodCourtId = '763a9520-ed03-47a5-b11e-b9c13e5e00d2';
-  const stallId = 'afba3536-bc8e-4064-afaa-9742089ea250';
-  const tableId = 'T12';
+  const foodCourtId = '0b54bf5a-badf-4c17-9558-33f1168ab0df';
+  const stallId = '198f7665-8ddc-4574-bc6d-2ae076f3a520';
+  const tableId = 'T1';
 
   const handleScan = () => {
     // Redirect to the new welcome page with the scanned info as query parameters
