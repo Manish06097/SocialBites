@@ -28,8 +28,11 @@ export default function RootLayout({
   const pathname = usePathname();
   
   // Define routes that should have a clean layout (no header/footer)
-  const cleanLayoutRoutes = ['/scan', '/vendor', '/login', '/signup', '/welcome'];
-  const isCleanLayout = cleanLayoutRoutes.some(route => pathname.startsWith(route));
+  const cleanLayoutRoutes = ['/scan', '/vendor', '/login', '/signup', '/welcome', '/'];
+  const isCleanLayout = cleanLayoutRoutes.some(route => {
+    if (route === '/') return pathname === '/';
+    return pathname.startsWith(route);
+  });
 
   if (isCleanLayout) {
     return (

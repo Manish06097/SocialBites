@@ -22,7 +22,7 @@ function WelcomeContent() {
     const stallId = searchParams.get('stallId');
     const tableId = searchParams.get('table');
 
-    const redirectUrl = stallId ? `/stalls/${stallId}` : '/';
+    const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
     const loginUrl = `/login?${searchParams.toString()}`;
 
     const handleGuest = async () => {
@@ -56,7 +56,7 @@ function WelcomeContent() {
         } catch (e) {
             console.error("Could not save table info to localStorage", e);
         }
-        router.push(redirectUrl);
+        router.replace(redirectUrl);
         router.refresh();
     };
 
