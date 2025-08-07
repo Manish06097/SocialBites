@@ -28,13 +28,17 @@ export default function RootLayout({
   const pathname = usePathname();
   
   // Define routes that should have a clean layout (no header/footer)
-  const cleanLayoutRoutes = ['/scan', '/vendor', '/login', '/signup', '/welcome', '/'];
+  const cleanLayoutRoutes = ['/scan', '/vendor', '/login', '/signup', '/welcome'];
   const isCleanLayout = cleanLayoutRoutes.some(route => {
+    // Exact match for /
     if (route === '/') return pathname === '/';
+    // Starts with for others
     return pathname.startsWith(route);
   });
+  
+   const isHomePage = pathname === '/';
 
-  if (isCleanLayout) {
+  if (isCleanLayout && !isHomePage) {
     return (
        <html lang="en" className="scroll-smooth" suppressHydrationWarning={true}>
          <body className="font-body antialiased">
@@ -58,12 +62,20 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FoodCourtProvider>
           <CartProvider>
-            <div className="flex min-h-screen flex-col pb-16 md:pb-0">
-              <Header />
-              <main className="flex-grow">{children}</main>
-              <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
-            </div>
-            <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+             {isHomePage ? (
+                <>
+                  {children}
+                </>
+              ) : (
+                <>
+                  <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+                    <Header />
+                    <main className="flex-grow">{children}</main>
+                    <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
+                  </div>
+                  <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+                </>
+              )}
             <Toaster />
           </CartProvider>
         </FoodCourtProvider>
