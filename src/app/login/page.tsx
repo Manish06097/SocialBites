@@ -81,7 +81,7 @@ function LoginContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.push(successfulLoginRedirectPath);
-        setGuestLoading(false);
+        // Do not reset guestLoading here, as the page is navigating away.
     }
   };
 
