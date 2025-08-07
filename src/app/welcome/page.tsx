@@ -57,7 +57,6 @@ function WelcomeContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.replace(redirectUrl);
-        router.refresh();
         setGuestLoading(false);
     };
 
