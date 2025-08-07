@@ -26,6 +26,7 @@ function WelcomeContent() {
     const loginUrl = `/login?${searchParams.toString()}`;
 
     const handleGuest = async () => {
+        if (guestLoading) return;
         setGuestLoading(true);
         const supabase = createSupabaseBrowserClient();
         const { error } = await supabase.auth.signInAnonymously({
