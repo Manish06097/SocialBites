@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -26,12 +25,9 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
       <div className="container mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around px-4">
         {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive = pathname.startsWith(href) && href !== '/stalls' || (pathname === '/stalls' && href === '/stalls');
-          if (href === '/') {
-              isActive = pathname === '/';
-          } else {
-              isActive = pathname.startsWith(href);
-          }
+          // Simplified and corrected isActive logic
+          const isActive = (href === '/stalls') ? pathname === href : pathname.startsWith(href);
+          
           return (
             <Link
               key={label}

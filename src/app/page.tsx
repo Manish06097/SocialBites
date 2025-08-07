@@ -1,6 +1,7 @@
 
-'use server';
+'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,26 @@ import Logo from '@/components/Logo';
 import { getStalls } from '@/lib/supabase/queries';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import StallCard from '@/components/StallCard';
+import type { Stall } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
+export default function LandingPage() {
+    const [featuredStalls, setFeaturedStalls] = useState<Stall[]>([]);
+    const [loading, setLoading] = useState(true);
 
-export default async function LandingPage() {
-    const featuredStalls = (await getStalls()).slice(0, 6);
+    useEffect(() => {
+        async function fetchStalls() {
+            try {
+                const allStalls = await getStalls();
+                setFeaturedStalls(allStalls.slice(0, 6));
+            } catch (error) {
+                console.error("Failed to fetch stalls", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchStalls();
+    }, []);
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -120,13 +137,23 @@ export default async function LandingPage() {
                             className="w-full mt-12"
                         >
                             <CarouselContent>
-                                {featuredStalls.map((stall) => (
-                                    <CarouselItem key={stall.id} className="md:basis-1/2 lg:basis-1/3">
-                                        <div className="p-1">
-                                            <StallCard stall={stall} />
-                                        </div>
-                                    </CarouselItem>
-                                ))}
+                                {loading ? (
+                                    Array.from({ length: 3 }).map((_, index) => (
+                                        <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                                            <div className="p-1">
+                                                <Skeleton className="h-[280px] w-full" />
+                                            </div>
+                                        </CarouselItem>
+                                    ))
+                                ) : (
+                                    featuredStalls.map((stall) => (
+                                        <CarouselItem key={stall.id} className="md:basis-1/2 lg:basis-1/3">
+                                            <div className="p-1">
+                                                <StallCard stall={stall} />
+                                            </div>
+                                        </CarouselItem>
+                                    ))
+                                )}
                             </CarouselContent>
                             <CarouselPrevious className="hidden sm:flex" />
                             <CarouselNext className="hidden sm:flex" />
