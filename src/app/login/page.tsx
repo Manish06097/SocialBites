@@ -1,3 +1,4 @@
+
 'use client';
 
 
@@ -29,7 +30,7 @@ function LoginContent() {
   const stallId = searchParams.get('stallId');
   const tableId = searchParams.get('table');
   
-  const successfulLoginRedirectPath = stallId ? `/stalls/${stallId}` : (redirect || '/');
+  const successfulLoginRedirectPath = stallId ? `/stalls/${stallId}` : (redirect || '/stalls');
   const signupPath = `/signup?${searchParams.toString()}`;
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {

@@ -111,7 +111,7 @@ export default function VendorLoginPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             Not a vendor?{' '}
-            <Link href="/" className="underline">
+            <Link href="/stalls" className="underline">
               Back to ordering
             </Link>
           </div>
