@@ -45,7 +45,7 @@ function WelcomeContent() {
         }
 
         try {
-            if (tableId && foodCourtId && stallId) {
+            if (tableId && foodCourtId) {
                 const tableInfo = {
                     tableId,
                     foodCourtId,
@@ -58,6 +58,7 @@ function WelcomeContent() {
         }
         router.replace(redirectUrl);
         router.refresh();
+        setGuestLoading(false);
     };
 
     return (
