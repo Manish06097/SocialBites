@@ -18,7 +18,7 @@ export default function ScanPage() {
 
   const handleScan = () => {
     // Redirect to the new welcome page with the scanned info as query parameters
-    router.push(`/welcome?foodCourtId=${foodCourtId}&stallId=${stallId}&table=${tableId}`);
+    router.replace(`/welcome?foodCourtId=${foodCourtId}&stallId=${stallId}&table=${tableId}`);
   };
 
   return (
