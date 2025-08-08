@@ -11,9 +11,11 @@ export default async function OrderTrackingPage({ params }: { params: { orderId:
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const { orderId } = params;
+
   if (!user) {
     // This should ideally be handled by middleware, but as a safeguard
-    redirect(`/login?redirect=/orders/${params.orderId}`);
+    redirect(`/login?redirect=/orders/${orderId}`);
   }
   
   const {orders: initialLatestOrders, error: latestOrdersError} = await getLatestOrders();
