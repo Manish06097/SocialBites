@@ -161,17 +161,17 @@ export default function StallPage() {
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <div className="flex items-center justify-between text-sm min-h-[20px]">
-                        {item.rating && item.rating > 0 && (
-                           <div className="flex items-center gap-2">
-                             <StarRating rating={item.rating} />
-                           </div>
-                        )}
-                        {item.orders && item.orders > 0 && (
-                          <div className="flex items-center gap-2">
-                              <Flame className="h-4 w-4 text-red-500" />
-                              <span className="font-medium">{item.orders}+ ordered</span>
-                          </div>
-                        )}
+                      {item.rating > 0 && (
+                        <div className="flex items-center gap-2">
+                          <StarRating rating={item.rating} />
+                        </div>
+                      )}
+                      {item.orders > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Flame className="h-4 w-4 text-red-500" />
+                          <span className="font-medium">{item.orders}+ ordered</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                   <div className="border-t p-4 flex justify-between items-center">
