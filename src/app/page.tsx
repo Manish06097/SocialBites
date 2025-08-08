@@ -6,31 +6,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, ScanLine, ShoppingCart, Utensils, Star } from 'lucide-react';
+import { ArrowRight, ScanLine, ShoppingCart, Utensils, Star, Building } from 'lucide-react';
 import Logo from '@/components/Logo';
-import { getStalls } from '@/lib/supabase/queries';
+import { getFoodCourts } from '@/lib/supabase/queries';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import StallCard from '@/components/StallCard';
-import type { Stall } from '@/lib/types';
+import type { FoodCourt, Stall } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFoodCourt } from '@/context/FoodCourtProvider';
 
 export default function LandingPage() {
-    const [featuredStalls, setFeaturedStalls] = useState<Stall[]>([]);
+    const [foodCourts, setFoodCourts] = useState<FoodCourt[]>([]);
     const [loading, setLoading] = useState(true);
+    const { setSelectedFoodCourt } = useFoodCourt();
 
     useEffect(() => {
-        async function fetchStalls() {
+        async function fetchFoodCourts() {
             try {
-                const allStalls = await getStalls();
-                setFeaturedStalls(allStalls.slice(0, 6));
+                const fetchedFoodCourts = await getFoodCourts();
+                setFoodCourts(fetchedFoodCourts);
             } catch (error) {
-                console.error("Failed to fetch stalls", error);
+                console.error("Failed to fetch food courts", error);
             } finally {
                 setLoading(false);
             }
         }
-        fetchStalls();
+        fetchFoodCourts();
     }, []);
+
+    const handleFoodCourtClick = (court: FoodCourt) => {
+        setSelectedFoodCourt(court);
+    };
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -42,13 +48,16 @@ export default function LandingPage() {
                         <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                             How It Works
                         </Link>
+                         <Link href="#food-courts" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                            Food Courts
+                        </Link>
                         <Link href="#vendor" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                             For Vendors
                         </Link>
                     </nav>
                     <Button asChild>
                         <Link href="/stalls">
-                            Explore Stalls <ArrowRight className="ml-2 h-4 w-4" />
+                            Order Now <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
                 </div>
@@ -122,42 +131,31 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                 {/* Featured Stalls */}
-                <section id="featured" className="w-full py-16 md:py-24">
+                {/* Food Courts Section */}
+                <section id="food-courts" className="w-full py-16 md:py-24">
                     <div className="container mx-auto px-4">
                         <div className="text-center">
-                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">Featured Stalls</h2>
-                            <p className="mt-4 text-lg text-muted-foreground">Get a taste of what's waiting for you.</p>
+                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">Our Partner Food Courts</h2>
+                            <p className="mt-4 text-lg text-muted-foreground">Find us at Surat's most popular foodie destinations.</p>
                         </div>
-                        <Carousel
-                            opts={{
-                                align: "start",
-                                loop: true,
-                            }}
-                            className="w-full mt-12"
-                        >
-                            <CarouselContent>
-                                {loading ? (
-                                    Array.from({ length: 3 }).map((_, index) => (
-                                        <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                                            <div className="p-1">
-                                                <Skeleton className="h-[280px] w-full" />
+                        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                           {loading ? (
+                                Array.from({ length: 3 }).map((_, index) => (
+                                    <Skeleton key={index} className="h-24 w-full" />
+                                ))
+                            ) : (
+                                foodCourts.map((court) => (
+                                    <Link key={court.id} href="/stalls" onClick={() => handleFoodCourtClick(court)}>
+                                        <Card className="group flex h-full items-center gap-4 p-6 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:shadow-lg">
+                                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary-foreground group-hover:text-primary">
+                                                <Building className="h-6 w-6" />
                                             </div>
-                                        </CarouselItem>
-                                    ))
-                                ) : (
-                                    featuredStalls.map((stall) => (
-                                        <CarouselItem key={stall.id} className="md:basis-1/2 lg:basis-1/3">
-                                            <div className="p-1">
-                                                <StallCard stall={stall} />
-                                            </div>
-                                        </CarouselItem>
-                                    ))
-                                )}
-                            </CarouselContent>
-                            <CarouselPrevious className="hidden sm:flex" />
-                            <CarouselNext className="hidden sm:flex" />
-                        </Carousel>
+                                            <h3 className="font-headline text-xl font-semibold">{court.name}</h3>
+                                        </Card>
+                                    </Link>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </section>
 
