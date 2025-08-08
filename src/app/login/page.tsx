@@ -48,10 +48,10 @@ function LoginContent() {
         title: 'Login Failed',
         description: error.message || 'Please check your credentials and try again.',
       });
+      setLoading(false);
     } else {
       router.push(successfulLoginRedirectPath);
     }
-    setLoading(false);
   };
   
   const handleGuest = async () => {
@@ -81,7 +81,6 @@ function LoginContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.push(successfulLoginRedirectPath);
-        // Do not reset guestLoading here, as the page is navigating away.
     }
   };
 
