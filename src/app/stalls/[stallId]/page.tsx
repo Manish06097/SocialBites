@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -161,11 +162,13 @@ export default function StallPage() {
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <div className="flex items-center justify-between text-sm min-h-[20px]">
-                      {item.rating > 0 && (
                         <div className="flex items-center gap-2">
-                          <StarRating rating={item.rating} />
+                         {item.rating && item.rating > 0 ? (
+                            <StarRating rating={item.rating} />
+                         ) : (
+                           <Badge variant="outline" className="text-xs">New</Badge>
+                         )}
                         </div>
-                      )}
                       {item.orders > 0 && (
                         <div className="flex items-center gap-2">
                           <Flame className="h-4 w-4 text-red-500" />
