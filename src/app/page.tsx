@@ -66,7 +66,7 @@ export default function LandingPage() {
             <main className="flex-grow">
                 {/* Hero Section */}
                 <section className="relative w-full py-20 md:py-32 lg:py-40">
-                    <div className="absolute inset-0 bg-black/60" />
+                    <div className="absolute inset-0 bg-black/70 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
                      <Image
                         src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxmb29kfGVufDB8fHx8MTc1NDE2Mzk0OXww&ixlib=rb-4.1.0&q=80&w=1080"
                         alt="Delicious food background"
@@ -221,3 +221,4 @@ export default function LandingPage() {
     );
 
     
+}
