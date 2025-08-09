@@ -18,22 +18,22 @@ export default function ScanPage() {
   const stallId = '198f7665-8ddc-4574-bc6d-2ae076f3a520';
   const tableId = 'T1';
   
+  // No changes needed here, as the intelligent redirect logic is on the /welcome page.
+  // This page simply simulates the scan and forwards the user.
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // If user is already logged in, they shouldn't be on the scan page.
-        router.replace('/stalls');
-      } else {
-        setLoading(false);
-      }
+      // If a session exists, we let the /welcome page handle the logic
+      // of whether to update table info or just redirect.
+      // For a clean start, we always go to /welcome after a scan.
+      setLoading(false);
     };
     checkSession();
   }, [router]);
 
   const handleScan = () => {
-    // Redirect to the new welcome page with the scanned info as query parameters
+    // Redirect to the welcome page with the scanned info as query parameters
     router.replace(`/welcome?foodCourtId=${foodCourtId}&stallId=${stallId}&table=${tableId}`);
   };
   

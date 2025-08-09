@@ -25,17 +25,26 @@ function WelcomeContent() {
 
     useEffect(() => {
         const supabase = createSupabaseBrowserClient();
-        const checkSession = async () => {
+        const checkSessionAndRedirect = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                // If user is already logged in, redirect them away.
+                // If a session exists, but the user has scanned a new QR code,
+                // update their table info before redirecting.
+                if (tableId && foodCourtId) {
+                    try {
+                        const tableInfo = { tableId, foodCourtId, stallId };
+                        localStorage.setItem('tableInfo', JSON.stringify(tableInfo));
+                    } catch (e) {
+                        console.error("Could not save new table info to localStorage", e);
+                    }
+                }
                 router.replace('/stalls');
             } else {
                 setPageLoading(false);
             }
         };
-        checkSession();
-    }, [router]);
+        checkSessionAndRedirect();
+    }, [router, foodCourtId, stallId, tableId]);
 
     const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
     const loginUrl = `/login?${searchParams.toString()}`;
