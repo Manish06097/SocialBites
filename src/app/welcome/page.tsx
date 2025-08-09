@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, LogIn } from 'lucide-react';
+import { User, LogIn, Loader2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 
 
 function WelcomeContent() {
@@ -17,10 +17,25 @@ function WelcomeContent() {
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [guestLoading, setGuestLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
 
     const foodCourtId = searchParams.get('foodCourtId');
     const stallId = searchParams.get('stallId');
     const tableId = searchParams.get('table');
+
+    useEffect(() => {
+        const supabase = createSupabaseBrowserClient();
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                // If user is already logged in, redirect them away.
+                router.replace('/stalls');
+            } else {
+                setPageLoading(false);
+            }
+        };
+        checkSession();
+    }, [router]);
 
     const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
     const loginUrl = `/login?${searchParams.toString()}`;
@@ -58,8 +73,15 @@ function WelcomeContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.replace(redirectUrl);
-        // Do not reset guestLoading here, as the page is navigating away.
     };
+    
+    if (pageLoading) {
+      return (
+         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
 
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
@@ -87,7 +109,11 @@ function WelcomeContent() {
 
 export default function WelcomePage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+            <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
             <WelcomeContent />
         </Suspense>
     );
