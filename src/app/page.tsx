@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, ScanLine, ShoppingCart, Utensils, Star, Building } from 'lucide-react';
@@ -46,6 +47,19 @@ export default function LandingPage() {
         setSelectedFoodCourt(court);
     };
 
+    const featureCardVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: (i: number) => ({
+            opacity: 1,
+            y: 0,
+            transition: {
+                delay: i * 0.2,
+                duration: 0.5,
+                ease: "easeOut"
+            }
+        })
+    };
+
     return (
         <div className="flex min-h-screen flex-col bg-background">
             {/* Header */}
@@ -78,19 +92,19 @@ export default function LandingPage() {
                 {/* Hero Section */}
                 <section className="relative w-full py-20 md:py-32 lg:py-40 flex items-center justify-center">
                      <Image
-                        src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxmb29kfGVufDB8fHx8MTc1NDE2Mzk0OXww&ixlib=rb-4.1.0&q=80&w=1080"
-                        alt="Delicious food background"
+                        src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxmb29kJTIwZmVzdGl2YWx8ZW58MHx8fHwxNzE5MjYwNjU4fDA&ixlib=rb-4.0.3&q=80&w=1080"
+                        alt="A vibrant spread of delicious food on a table"
                         fill
                         className="object-cover"
-                        data-ai-hint="food"
+                        data-ai-hint="food festival"
                         priority
                       />
-                    <div className="absolute inset-0 bg-black/60 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.2),rgba(255,255,255,0))]" />
+                    <div className="absolute inset-0 bg-black/70 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
                     <div className="container relative mx-auto px-4 text-center text-white">
-                        <h1 className="font-headline text-4xl font-extrabold tracking-tight [text-shadow:1px_1px_4px_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl lg:text-7xl">
+                        <h1 className="font-headline text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
                             The Entire Food Court, In Your Pocket.
                         </h1>
-                        <p className="mx-auto mt-6 max-w-2xl text-lg [text-shadow:1px_1px_2px_rgba(0,0,0,0.6)] md:text-xl">
+                        <p className="mx-auto mt-6 max-w-2xl text-lg text-white/90 md:text-xl">
                             Discover, order, and pay from every stall at your favorite Surat food courts, right from your table.
                         </p>
                         <div className="mt-8">
@@ -112,33 +126,42 @@ export default function LandingPage() {
                             <p className="mt-4 text-lg text-muted-foreground">Ordering your favorite food is just a few taps away.</p>
                         </div>
                         <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
-                            <Card className="text-center transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <ScanLine className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">1. Scan &amp; Sit</h3>
-                                    <p className="mt-2 text-muted-foreground">Scan the unique QR code at your table to instantly access all menus.</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="text-center transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <ShoppingCart className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">2. Mix &amp; Match</h3>
-                                    <p className="mt-2 text-muted-foreground">Explore and order from multiple stalls in one unified cart.</p>
-                                </CardContent>
-                            </Card>
-                             <Card className="text-center transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <Utensils className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">3. Eat &amp; Enjoy</h3>
-                                    <p className="mt-2 text-muted-foreground">Pay seamlessly and get food delivered right to your table. No queues, no hassle.</p>
-                                </CardContent>
-                            </Card>
+                            {[
+                                {
+                                    icon: <ScanLine className="h-8 w-8" />,
+                                    title: "1. Scan & Sit",
+                                    description: "Scan the unique QR code at your table to instantly access all menus."
+                                },
+                                {
+                                    icon: <ShoppingCart className="h-8 w-8" />,
+                                    title: "2. Mix & Match",
+                                    description: "Explore and order from multiple stalls in one unified cart."
+                                },
+                                {
+                                    icon: <Utensils className="h-8 w-8" />,
+                                    title: "3. Eat & Enjoy",
+                                    description: "Pay seamlessly and get food delivered right to your table. No queues, no hassle."
+                                }
+                            ].map((feature, i) => (
+                                <motion.div
+                                    key={feature.title}
+                                    custom={i}
+                                    initial="hidden"
+                                    whileInView="visible"
+                                    viewport={{ once: true, amount: 0.5 }}
+                                    variants={featureCardVariants}
+                                >
+                                    <Card className="text-center h-full transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl">
+                                        <CardContent className="p-6">
+                                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                {feature.icon}
+                                            </div>
+                                            <h3 className="mt-6 font-headline text-xl font-semibold">{feature.title}</h3>
+                                            <p className="mt-2 text-muted-foreground">{feature.description}</p>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
                         </div>
                     </div>
                 </section>
@@ -153,18 +176,27 @@ export default function LandingPage() {
                         <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                            {loading ? (
                                 Array.from({ length: 3 }).map((_, index) => (
-                                    <Skeleton key={index} className="h-24 w-full" />
+                                    <Skeleton key={index} className="h-24 w-full rounded-lg" />
                                 ))
                             ) : (
-                                foodCourts.map((court) => (
-                                    <Link key={court.id} href="/stalls" onClick={() => handleFoodCourtClick(court)} className="block">
-                                        <Card className="group flex h-full items-center gap-4 p-6 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:shadow-lg">
-                                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary-foreground group-hover:text-primary">
-                                                <Building className="h-6 w-6" />
-                                            </div>
-                                            <h3 className="font-headline text-xl font-semibold">{court.name}</h3>
-                                        </Card>
-                                    </Link>
+                                foodCourts.map((court, i) => (
+                                    <motion.div
+                                        key={court.id}
+                                        custom={i + 3} // Continue the stagger from the features section
+                                        initial="hidden"
+                                        whileInView="visible"
+                                        viewport={{ once: true, amount: 0.5 }}
+                                        variants={featureCardVariants}
+                                    >
+                                        <Link href="/stalls" onClick={() => handleFoodCourtClick(court)} className="block h-full">
+                                            <Card className="group flex h-full items-center gap-4 p-6 transition-all duration-300 hover:shadow-lg hover:scale-105 border-transparent hover:border-primary bg-muted/50 hover:bg-muted">
+                                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                                                    <Building className="h-6 w-6" />
+                                                </div>
+                                                <h3 className="font-headline text-xl font-semibold">{court.name}</h3>
+                                            </Card>
+                                        </Link>
+                                    </motion.div>
                                 ))
                             )}
                         </div>
