@@ -22,6 +22,8 @@ function WelcomeContent() {
     const foodCourtId = searchParams.get('foodCourtId');
     const stallId = searchParams.get('stallId');
     const tableId = searchParams.get('table');
+    
+    const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
 
     useEffect(() => {
         const supabase = createSupabaseBrowserClient();
@@ -38,15 +40,14 @@ function WelcomeContent() {
                         console.error("Could not save new table info to localStorage", e);
                     }
                 }
-                router.replace('/stalls');
+                router.replace(redirectUrl);
             } else {
                 setPageLoading(false);
             }
         };
         checkSessionAndRedirect();
-    }, [router, foodCourtId, stallId, tableId]);
+    }, [router, foodCourtId, stallId, tableId, redirectUrl]);
 
-    const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
     const loginUrl = `/login?${searchParams.toString()}`;
 
     const handleGuest = async () => {
