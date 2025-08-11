@@ -48,41 +48,42 @@ function StallsPageContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>('All');
-  const { selectedFoodCourt, setSelectedFoodCourt, setFoodCourts } = useFoodCourt();
+  const { selectedFoodCourt, setSelectedFoodCourt, foodCourts, setFoodCourts } = useFoodCourt();
   const [allStalls, setAllStalls] = useState<Stall[]>([]);
   const [loadingContent, setLoadingContent] = useState(true); // New loading state for overall content
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Effect to fetch food courts and set initial selected food court
+  // Effect to fetch food courts and set initial selected food court if needed
   useEffect(() => {
     const initializeFoodCourts = async () => {
       setLoadingContent(true);
       try {
         const fetchedFoodCourts = await getFoodCourts();
         setFoodCourts(fetchedFoodCourts); // Update food courts in context
+        
+        // Only set the initial food court if one isn't already selected.
+        if (!selectedFoodCourt && fetchedFoodCourts.length > 0) {
+            let initialFoodCourt: FoodCourt | null = null;
+            const tableInfoStr = localStorage.getItem('tableInfo');
+            if (tableInfoStr) {
+              const tableInfo = JSON.parse(tableInfoStr);
+              if (tableInfo.foodCourtId) {
+                initialFoodCourt = fetchedFoodCourts.find(fc => fc.id === tableInfo.foodCourtId) || null;
+              }
+            }
 
-        let initialFoodCourt: FoodCourt | null = null;
-        const tableInfoStr = localStorage.getItem('tableInfo');
-        if (tableInfoStr) {
-          const tableInfo = JSON.parse(tableInfoStr);
-          if (tableInfo.foodCourtId) {
-            initialFoodCourt = fetchedFoodCourts.find(fc => fc.id === tableInfo.foodCourtId) || null;
-          }
+            if (!initialFoodCourt) {
+              initialFoodCourt = fetchedFoodCourts[0]; // Default to the first food court
+            }
+            setSelectedFoodCourt(initialFoodCourt);
         }
-
-        if (!initialFoodCourt && fetchedFoodCourts.length > 0) {
-          initialFoodCourt = fetchedFoodCourts[0]; // Default to the first food court if no table info or ID not found
-        }
-        setSelectedFoodCourt(initialFoodCourt);
       } catch (error) {
         console.error('Error initializing food courts:', error);
-      } finally {
-        // Do not set loadingContent to false here, as stalls still need to be fetched
       }
     };
 
     initializeFoodCourts();
-  }, [setFoodCourts, setSelectedFoodCourt]);
+  }, [setFoodCourts, setSelectedFoodCourt, selectedFoodCourt]);
 
   // Effect to fetch stalls based on selectedFoodCourt and check session
   useEffect(() => {
@@ -92,31 +93,25 @@ function StallsPageContent() {
         return;
       }
 
-      console.log('Fetching stalls for food court:', selectedFoodCourt.id);
       setLoadingContent(true); // Set loading true when fetching stalls
       try {
         const fetchedStalls = await getStalls(selectedFoodCourt.id);
-        console.log('Fetched stalls:', fetchedStalls);
         setAllStalls(fetchedStalls);
       } catch (error) {
         console.error('Error fetching stalls:', error);
         setAllStalls([]); // Clear stalls on error
       } finally {
-        setLoadingContent(false); // Set loading false after stalls are fetched
-        console.log('Finished fetching stalls. Loading state set to false.');
+        setLoadingContent(false);
       }
 
-      console.log('Checking session and redirect...');
       const supabase = createSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        console.log('No session found, redirecting to /scan');
         router.replace('/scan');
         return;
       }
       setSessionChecked(true);
-      console.log('Session checked and set to true.');
     };
 
     fetchDataAndCheckSession();
@@ -137,15 +132,7 @@ function StallsPageContent() {
       const matchesCuisine = !selectedCuisine || selectedCuisine === 'All' || stall.tags.includes(selectedCuisine);
       return matchesSearch && matchesCuisine;
     });
-  }, [searchTerm, selectedCuisine, allStalls]);
-
-  useEffect(() => {
-    console.log('Current loadingContent:', loadingContent);
-    console.log('Current sessionChecked:', sessionChecked);
-    console.log('Current selectedFoodCourt:', selectedFoodCourt);
-    console.log('Current allStalls:', allStalls);
-    console.log('Current filteredStalls:', filteredStalls);
-  }, [loadingContent, sessionChecked, selectedFoodCourt, allStalls, filteredStalls]);
+  }, [searchTerm, selectedCuisine, allStalls, selectedFoodCourt]);
 
   if (loadingContent || !sessionChecked || !selectedFoodCourt) {
     return (
@@ -225,3 +212,5 @@ export default function StallsPage() {
     </Suspense>
   )
 }
+
+    

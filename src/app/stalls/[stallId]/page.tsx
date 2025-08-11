@@ -1,20 +1,24 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { getStallWithMenuItems, getFoodCourtById } from '@/lib/supabase/queries';
 import type { MenuItem, Stall } from '@/lib/types';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Flame } from 'lucide-react';
+import { Star, Flame, Utensils, ChevronsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from '@/components/StarRating';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function StallPage() {
   const params = useParams();
@@ -23,6 +27,7 @@ export default function StallPage() {
   const [stall, setStall] = useState<Stall | null>(null);
   const [loading, setLoading] = useState(true);
   const [largeImageView, setLargeImageView] = useState<string | null>(null);
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
   const { setSelectedFoodCourt } = useFoodCourt();
 
@@ -76,6 +81,10 @@ export default function StallPage() {
   
   const handleItemClick = (item: MenuItem) => {
     setSelectedItem(item);
+  };
+  
+  const handleCategoryClick = () => {
+    setIsCategoryPopoverOpen(false);
   };
 
   return (
@@ -132,7 +141,7 @@ export default function StallPage() {
             {stall.tags.map(tag => <div key={tag} className="text-xs text-muted-foreground">#{tag}</div>)}
         </div>
         {stall.menu.map((category, index) => (
-          <section key={index} className="mb-12">
+          <section key={index} id={category.title.replace(/\s+/g, '-').toLowerCase()} className="mb-12 scroll-mt-20">
             <h2 className="font-headline text-2xl font-bold md:text-3xl">{category.title}</h2>
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {category.items.map((item) => (
@@ -153,17 +162,19 @@ export default function StallPage() {
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <div className="flex items-center justify-between text-sm min-h-[20px]">
-                        {item.rating && item.rating > 0 && (
-                           <div className="flex items-center gap-2">
-                             <StarRating rating={item.rating} />
-                           </div>
-                        )}
-                        {item.orders && item.orders > 0 && (
-                          <div className="flex items-center gap-2">
-                              <Flame className="h-4 w-4 text-red-500" />
-                              <span className="font-medium">{item.orders}+ ordered</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                         {item.rating && item.rating > 0 ? (
+                            <StarRating rating={item.rating} />
+                         ) : (
+                           <Badge variant="outline" className="text-xs">New</Badge>
+                         )}
+                        </div>
+                      {item.orders > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Flame className="h-4 w-4 text-red-500" />
+                          <span className="font-medium">{item.orders}+ ordered</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                   <div className="border-t p-4 flex justify-between items-center">
@@ -199,6 +210,37 @@ export default function StallPage() {
                   />
             </DialogContent>
         </Dialog>
+      )}
+
+       {stall.menu.length > 1 && (
+         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:hidden"
+              size="icon"
+            >
+              <Utensils className="h-6 w-6" />
+              <span className="sr-only">Browse Categories</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" side="top" align="end">
+              <h4 className="px-2 py-1.5 font-semibold font-headline">Categories</h4>
+              <ScrollArea className="h-auto max-h-64">
+                <div className="flex flex-col gap-1 p-1">
+                    {stall.menu.map((category) => (
+                      <Link
+                        key={category.title}
+                        href={`#${category.title.replace(/\s+/g, '-').toLowerCase()}`}
+                        onClick={handleCategoryClick}
+                        className="rounded-md px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        {category.title}
+                      </Link>
+                    ))}
+                </div>
+              </ScrollArea>
+          </PopoverContent>
+        </Popover>
       )}
     </>
   );

@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, LogIn } from 'lucide-react';
+import { User, LogIn, Loader2 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 
 
 function WelcomeContent() {
@@ -17,15 +17,41 @@ function WelcomeContent() {
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [guestLoading, setGuestLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
 
     const foodCourtId = searchParams.get('foodCourtId');
     const stallId = searchParams.get('stallId');
     const tableId = searchParams.get('table');
-
+    
     const redirectUrl = stallId ? `/stalls/${stallId}` : '/stalls';
+
+    useEffect(() => {
+        const supabase = createSupabaseBrowserClient();
+        const checkSessionAndRedirect = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                // If a session exists, but the user has scanned a new QR code,
+                // update their table info before redirecting.
+                if (tableId && foodCourtId) {
+                    try {
+                        const tableInfo = { tableId, foodCourtId, stallId };
+                        localStorage.setItem('tableInfo', JSON.stringify(tableInfo));
+                    } catch (e) {
+                        console.error("Could not save new table info to localStorage", e);
+                    }
+                }
+                router.replace(redirectUrl);
+            } else {
+                setPageLoading(false);
+            }
+        };
+        checkSessionAndRedirect();
+    }, [router, foodCourtId, stallId, tableId, redirectUrl]);
+
     const loginUrl = `/login?${searchParams.toString()}`;
 
     const handleGuest = async () => {
+        if (guestLoading) return;
         setGuestLoading(true);
         const supabase = createSupabaseBrowserClient();
         const { error } = await supabase.auth.signInAnonymously({
@@ -45,7 +71,7 @@ function WelcomeContent() {
         }
 
         try {
-            if (tableId && foodCourtId && stallId) {
+            if (tableId && foodCourtId) {
                 const tableInfo = {
                     tableId,
                     foodCourtId,
@@ -57,8 +83,15 @@ function WelcomeContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.replace(redirectUrl);
-        router.refresh();
     };
+    
+    if (pageLoading) {
+      return (
+         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
 
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
@@ -86,7 +119,11 @@ function WelcomeContent() {
 
 export default function WelcomePage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+            <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
             <WelcomeContent />
         </Suspense>
     );

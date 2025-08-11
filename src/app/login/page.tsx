@@ -48,14 +48,14 @@ function LoginContent() {
         title: 'Login Failed',
         description: error.message || 'Please check your credentials and try again.',
       });
+      setLoading(false);
     } else {
       router.push(successfulLoginRedirectPath);
-      router.refresh(); // Refresh to update server-side auth state
     }
-    setLoading(false);
   };
   
   const handleGuest = async () => {
+    if (guestLoading) return;
     setGuestLoading(true);
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInAnonymously({
@@ -70,6 +70,7 @@ function LoginContent() {
             title: 'Guest Login Failed',
             description: 'Could not create a guest session. Please try again.',
         });
+        setGuestLoading(false);
     } else {
         try {
             if (tableId && foodCourtId) {
@@ -80,9 +81,7 @@ function LoginContent() {
             console.error("Could not save table info to localStorage", e);
         }
         router.push(successfulLoginRedirectPath);
-        router.refresh();
     }
-    setGuestLoading(false);
   };
 
   return (
@@ -130,7 +129,7 @@ function LoginContent() {
                   <span className="bg-card px-2 text-muted-foreground">Or</span>
               </div>
           </div>
-          <Button variant="outline" className="w-full font-bold" onClick={handleGuest} disabled={loading || guestLoading}>
+          <Button variant="outline" className="w-full font-bold" onClick={handleGuest} disabled={guestLoading}>
             {guestLoading ? 'Starting...' : <><User className="mr-2 h-5 w-5" /> Continue as Guest</>}
           </Button>
            <div className="mt-4 text-center text-sm">

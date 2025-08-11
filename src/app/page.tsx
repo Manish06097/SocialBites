@@ -4,51 +4,85 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, ScanLine, ShoppingCart, Utensils, Star } from 'lucide-react';
+import { ArrowRight, ScanLine, ShoppingCart, Utensils, Star, Building } from 'lucide-react';
 import Logo from '@/components/Logo';
-import { getStalls } from '@/lib/supabase/queries';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import StallCard from '@/components/StallCard';
-import type { Stall } from '@/lib/types';
+import { getFoodCourts } from '@/lib/supabase/queries';
+import type { FoodCourt } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFoodCourt } from '@/context/FoodCourtProvider';
+import { cn } from '@/lib/utils';
 
 export default function LandingPage() {
-    const [featuredStalls, setFeaturedStalls] = useState<Stall[]>([]);
+    const [foodCourts, setFoodCourts] = useState<FoodCourt[]>([]);
     const [loading, setLoading] = useState(true);
+    const { setSelectedFoodCourt } = useFoodCourt();
+    const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
 
     useEffect(() => {
-        async function fetchStalls() {
+        const handleScroll = () => {
+            setIsHeaderScrolled(window.scrollY > 10);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        async function fetchFoodCourts() {
             try {
-                const allStalls = await getStalls();
-                setFeaturedStalls(allStalls.slice(0, 6));
+                const fetchedFoodCourts = await getFoodCourts();
+                setFoodCourts(fetchedFoodCourts);
             } catch (error) {
-                console.error("Failed to fetch stalls", error);
+                console.error("Failed to fetch food courts", error);
             } finally {
                 setLoading(false);
             }
         }
-        fetchStalls();
+        fetchFoodCourts();
     }, []);
+
+    const handleFoodCourtClick = (court: FoodCourt) => {
+        setSelectedFoodCourt(court);
+    };
+
+    const featureCardVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: (i: number) => ({
+            opacity: 1,
+            y: 0,
+            transition: {
+                delay: i * 0.2,
+                duration: 0.5,
+                ease: "easeOut"
+            }
+        })
+    };
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
             {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
+            <header className={cn(
+                "fixed top-0 z-50 w-full transition-all duration-300",
+                isHeaderScrolled ? "border-b bg-background/95 backdrop-blur-sm" : "bg-transparent border-b border-transparent"
+            )}>
                 <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
                     <Logo />
                     <nav className="hidden items-center gap-6 md:flex">
-                        <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                        <Link href="#features" className={cn("text-sm font-medium transition-colors hover:text-primary", isHeaderScrolled ? "text-muted-foreground" : "text-white/80 hover:text-white")}>
                             How It Works
                         </Link>
-                        <Link href="#vendor" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                         <Link href="#food-courts" className={cn("text-sm font-medium transition-colors hover:text-primary", isHeaderScrolled ? "text-muted-foreground" : "text-white/80 hover:text-white")}>
+                            Food Courts
+                        </Link>
+                        <Link href="#vendor" className={cn("text-sm font-medium transition-colors hover:text-primary", isHeaderScrolled ? "text-muted-foreground" : "text-white/80 hover:text-white")}>
                             For Vendors
                         </Link>
                     </nav>
                     <Button asChild>
-                        <Link href="/stalls">
-                            Explore Stalls <ArrowRight className="ml-2 h-4 w-4" />
+                        <Link href="/scan">
+                            Order Now <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
                 </div>
@@ -56,21 +90,22 @@ export default function LandingPage() {
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <section className="relative w-full py-20 md:py-32 lg:py-40">
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                <section className="relative w-full py-20 md:py-32 lg:py-40 flex items-center justify-center">
                      <Image
-                        src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxmb29kfGVufDB8fHx8MTc1NDE2Mzk0OXww&ixlib=rb-4.1.0&q=80&w=1080"
-                        alt="Delicious food background"
+                        src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxmb29kJTIwZmVzdGl2YWx8ZW58MHx8fHwxNzE5MjYwNjU4fDA&ixlib=rb-4.0.3&q=80&w=1080"
+                        alt="A vibrant spread of delicious food on a table"
                         fill
-                        className="object-cover -z-10"
-                        data-ai-hint="food"
+                        className="object-cover"
+                        data-ai-hint="food festival"
+                        priority
                       />
+                    <div className="absolute inset-0 bg-black/70 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
                     <div className="container relative mx-auto px-4 text-center text-white">
-                        <h1 className="font-headline text-4xl font-extrabold tracking-tight [text-shadow:2px_2px_4px_#000] sm:text-5xl md:text-6xl lg:text-7xl">
+                        <h1 className="font-headline text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
                             The Entire Food Court, In Your Pocket.
                         </h1>
-                        <p className="mx-auto mt-6 max-w-2xl text-lg [text-shadow:1px_1px_2px_#000] md:text-xl">
-                            Discover, order, and pay from the best stalls at your favorite Surat food courts, right from your table.
+                        <p className="mx-auto mt-6 max-w-2xl text-lg text-white/90 md:text-xl">
+                            Discover, order, and pay from every stall at your favorite Surat food courts, right from your table.
                         </p>
                         <div className="mt-8">
                              <Button size="lg" asChild className="font-bold">
@@ -87,77 +122,84 @@ export default function LandingPage() {
                 <section id="features" className="w-full bg-muted py-16 md:py-24">
                     <div className="container mx-auto px-4">
                         <div className="text-center">
-                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">How It Works</h2>
+                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">Your Feast, Simplified</h2>
                             <p className="mt-4 text-lg text-muted-foreground">Ordering your favorite food is just a few taps away.</p>
                         </div>
                         <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
-                            <Card className="text-center">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <ScanLine className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">1. Scan the Code</h3>
-                                    <p className="mt-2 text-muted-foreground">Use your phone to scan the unique QR code at your table.</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="text-center">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <ShoppingCart className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">2. Browse & Order</h3>
-                                    <p className="mt-2 text-muted-foreground">Explore menus from all stalls, add items to your cart, and checkout.</p>
-                                </CardContent>
-                            </Card>
-                             <Card className="text-center">
-                                <CardContent className="p-6">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <Utensils className="h-8 w-8" />
-                                    </div>
-                                    <h3 className="mt-6 font-headline text-xl font-semibold">3. Enjoy Your Meal</h3>
-                                    <p className="mt-2 text-muted-foreground">Sit back and relax. Your delicious food will be delivered right to your table.</p>
-                                </CardContent>
-                            </Card>
+                            {[
+                                {
+                                    icon: <ScanLine className="h-8 w-8" />,
+                                    title: "1. Scan & Sit",
+                                    description: "Scan the unique QR code at your table to instantly access all menus."
+                                },
+                                {
+                                    icon: <ShoppingCart className="h-8 w-8" />,
+                                    title: "2. Mix & Match",
+                                    description: "Explore and order from multiple stalls in one unified cart."
+                                },
+                                {
+                                    icon: <Utensils className="h-8 w-8" />,
+                                    title: "3. Eat & Enjoy",
+                                    description: "Pay seamlessly and get food delivered right to your table. No queues, no hassle."
+                                }
+                            ].map((feature, i) => (
+                                <motion.div
+                                    key={feature.title}
+                                    custom={i}
+                                    initial="hidden"
+                                    whileInView="visible"
+                                    viewport={{ once: true, amount: 0.5 }}
+                                    variants={featureCardVariants}
+                                >
+                                    <Card className="text-center h-full transform transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl">
+                                        <CardContent className="p-6">
+                                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                {feature.icon}
+                                            </div>
+                                            <h3 className="mt-6 font-headline text-xl font-semibold">{feature.title}</h3>
+                                            <p className="mt-2 text-muted-foreground">{feature.description}</p>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
                         </div>
                     </div>
                 </section>
 
-                 {/* Featured Stalls */}
-                <section id="featured" className="w-full py-16 md:py-24">
+                {/* Food Courts Section */}
+                <section id="food-courts" className="w-full py-16 md:py-24">
                     <div className="container mx-auto px-4">
                         <div className="text-center">
-                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">Featured Stalls</h2>
-                            <p className="mt-4 text-lg text-muted-foreground">Get a taste of what's waiting for you.</p>
+                            <h2 className="font-headline text-3xl font-bold tracking-tight sm:text-4xl">Our Partner Food Courts</h2>
+                            <p className="mt-4 text-lg text-muted-foreground">Find us at Surat's most popular foodie destinations.</p>
                         </div>
-                        <Carousel
-                            opts={{
-                                align: "start",
-                                loop: true,
-                            }}
-                            className="w-full mt-12"
-                        >
-                            <CarouselContent>
-                                {loading ? (
-                                    Array.from({ length: 3 }).map((_, index) => (
-                                        <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                                            <div className="p-1">
-                                                <Skeleton className="h-[280px] w-full" />
-                                            </div>
-                                        </CarouselItem>
-                                    ))
-                                ) : (
-                                    featuredStalls.map((stall) => (
-                                        <CarouselItem key={stall.id} className="md:basis-1/2 lg:basis-1/3">
-                                            <div className="p-1">
-                                                <StallCard stall={stall} />
-                                            </div>
-                                        </CarouselItem>
-                                    ))
-                                )}
-                            </CarouselContent>
-                            <CarouselPrevious className="hidden sm:flex" />
-                            <CarouselNext className="hidden sm:flex" />
-                        </Carousel>
+                        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                           {loading ? (
+                                Array.from({ length: 3 }).map((_, index) => (
+                                    <Skeleton key={index} className="h-24 w-full rounded-lg" />
+                                ))
+                            ) : (
+                                foodCourts.map((court, i) => (
+                                    <motion.div
+                                        key={court.id}
+                                        custom={i + 3} // Continue the stagger from the features section
+                                        initial="hidden"
+                                        whileInView="visible"
+                                        viewport={{ once: true, amount: 0.5 }}
+                                        variants={featureCardVariants}
+                                    >
+                                        <Link href="/stalls" onClick={() => handleFoodCourtClick(court)} className="block h-full">
+                                            <Card className="group flex h-full items-center gap-4 p-6 transition-all duration-300 hover:shadow-lg hover:scale-105 border-transparent hover:border-primary bg-muted/50 hover:bg-muted">
+                                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                                                    <Building className="h-6 w-6" />
+                                                </div>
+                                                <h3 className="font-headline text-xl font-semibold">{court.name}</h3>
+                                            </Card>
+                                        </Link>
+                                    </motion.div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </section>
 
@@ -198,7 +240,7 @@ export default function LandingPage() {
                                 width={600}
                                 height={400}
                                 className="rounded-lg shadow-lg"
-                                data-ai-hint="food"
+                                data-ai-hint="busy kitchen"
                               />
                         </div>
                     </div>
@@ -222,3 +264,5 @@ export default function LandingPage() {
         </div>
     );
 }
+
+    
