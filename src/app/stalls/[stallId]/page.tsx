@@ -16,15 +16,65 @@ import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from '@/components/StarRating';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
+function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartClick: (item: MenuItem) => void }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const descriptionTooLong = item.description.length > 60;
+
+    return (
+        <Card className="flex flex-col overflow-hidden">
+            <CardContent className="flex gap-4 p-4">
+                <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    width={100}
+                    height={100}
+                    className="h-24 w-24 rounded-md object-cover bg-muted"
+                    data-ai-hint="food item"
+                />
+                <div className="flex-grow space-y-1">
+                    <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
+                    <p className={cn("text-sm text-muted-foreground", !isExpanded && "line-clamp-2")}>
+                        {item.description}
+                    </p>
+                    {descriptionTooLong && (
+                        <button onClick={() => setIsExpanded(!isExpanded)} className="ml-1 text-primary hover:underline text-xs font-semibold">
+                            {isExpanded ? 'Read Less' : 'Read More'}
+                        </button>
+                    )}
+                    <div className="flex items-center justify-between text-sm min-h-[20px] pt-1">
+                        <div className="flex items-center gap-2">
+                            {item.rating && item.rating > 0 ? (
+                                <StarRating rating={item.rating} />
+                            ) : (
+                                <Badge variant="outline" className="text-xs">New</Badge>
+                            )}
+                        </div>
+                        {item.orders > 0 && (
+                            <div className="flex items-center gap-1 text-red-500">
+                                <Flame className="h-4 w-4" />
+                                <span className="text-xs font-medium">{item.orders}+ ordered</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+            <div className="border-t p-3 flex justify-between items-center bg-muted/30 mt-auto">
+                <p className="text-xl font-bold text-primary">₹{item.price}</p>
+                <Button size="sm" onClick={() => onAddToCartClick(item)}>Add</Button>
+            </div>
+        </Card>
+    )
+}
+
 
 export default function StallPage() {
   const params = useParams();
   const stallId = Array.isArray(params.stallId) ? params.stallId[0] : params.stallId;
   const [selectedItemForCart, setSelectedItemForCart] = useState<MenuItem | null>(null);
-  const [selectedItemForView, setSelectedItemForView] = useState<MenuItem | null>(null);
   const [stall, setStall] = useState<Stall | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
@@ -87,11 +137,6 @@ export default function StallPage() {
   const handleCategoryClick = () => {
     setIsCategoryPopoverOpen(false);
   };
-  
-  const truncateText = (text: string, length: number) => {
-    if (text.length <= length) return text;
-    return text.substring(0, length) + '...';
-  };
 
   return (
     <>
@@ -151,46 +196,7 @@ export default function StallPage() {
             <h2 className="font-headline text-2xl font-bold md:text-3xl">{category.title}</h2>
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
               {category.items.map((item) => (
-                <Card key={item.id} className="flex flex-col overflow-hidden">
-                    <CardContent className="flex gap-4 p-4">
-                        <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            width={100}
-                            height={100}
-                            className="h-24 w-24 rounded-md object-cover bg-muted"
-                            data-ai-hint="food item"
-                        />
-                        <div className="flex-grow space-y-1">
-                            <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {truncateText(item.description, 60)}
-                                {item.description.length > 60 && (
-                                    <button onClick={() => setSelectedItemForView(item)} className="ml-1 text-primary hover:underline text-xs">Read More</button>
-                                )}
-                            </p>
-                            <div className="flex items-center justify-between text-sm min-h-[20px] pt-1">
-                                <div className="flex items-center gap-2">
-                                {item.rating && item.rating > 0 ? (
-                                    <StarRating rating={item.rating} />
-                                ) : (
-                                    <Badge variant="outline" className="text-xs">New</Badge>
-                                )}
-                                </div>
-                                {item.orders > 0 && (
-                                <div className="flex items-center gap-1 text-red-500">
-                                    <Flame className="h-4 w-4" />
-                                    <span className="text-xs font-medium">{item.orders}+ ordered</span>
-                                </div>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                    <div className="border-t p-3 flex justify-between items-center bg-muted/30">
-                        <p className="text-xl font-bold text-primary">₹{item.price}</p>
-                        <Button size="sm" onClick={() => handleAddToCartClick(item)}>Add</Button>
-                    </div>
-                </Card>
+                <MenuItemCard key={item.id} item={item} onAddToCartClick={handleAddToCartClick} />
               ))}
             </div>
           </section>
@@ -204,27 +210,6 @@ export default function StallPage() {
             open={!!selectedItemForCart} 
             onOpenChange={(open) => !open && setSelectedItemForCart(null)}
         />
-      )}
-
-      {selectedItemForView && (
-        <Dialog open={!!selectedItemForView} onOpenChange={(open) => !open && setSelectedItemForView(null)}>
-            <DialogContent className="max-w-md">
-                 <DialogHeader>
-                    <Image
-                        src={selectedItemForView.imageUrl}
-                        alt={selectedItemForView.name}
-                        width={450}
-                        height={250}
-                        className="w-full h-auto object-contain rounded-lg aspect-video bg-muted"
-                        data-ai-hint="food item"
-                    />
-                    <DialogTitle className="font-headline text-2xl pt-4">{selectedItemForView.name}</DialogTitle>
-                    <DialogDescription className="text-base text-muted-foreground pt-2 text-left">
-                        {selectedItemForView.description}
-                    </DialogDescription>
-                 </DialogHeader>
-            </DialogContent>
-        </Dialog>
       )}
 
        {stall.menu.length > 1 && (
