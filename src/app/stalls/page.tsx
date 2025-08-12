@@ -33,11 +33,11 @@ function WelcomeMessage() {
   if (!table) return null;
 
   return (
-    <div className="mb-8 rounded-lg border border-primary/20 bg-primary/10 p-4 text-center">
-      <h2 className="font-headline text-2xl font-bold text-primary">
-        Welcome to Surat Social Bites!
+    <div className="mb-6 rounded-lg border border-primary/20 bg-primary/10 p-3 text-center">
+      <h2 className="font-headline text-lg font-bold text-primary">
+        Welcome! You're at Table <span className="underline">{table}</span>.
       </h2>
-      <p className="text-foreground">You're at Table <span className="font-bold">{table}</span>. Ready for a feast?</p>
+      <p className="text-sm text-foreground/80">Ready for a feast?</p>
     </div>
   );
 }
@@ -54,7 +54,7 @@ function StallsPageContent() {
   // Effect to fetch food courts and set initial selected food court if needed
   useEffect(() => {
     const initializeFoodCourts = async () => {
-      if (foodCourts.length > 0) {
+      if (foodCourts.length > 0 && selectedFoodCourt) { // No need to fetch if we have courts and a selection
         return;
       }
       try {
@@ -66,7 +66,7 @@ function StallsPageContent() {
     };
 
     initializeFoodCourts();
-  }, [setFoodCourts, foodCourts]);
+  }, [setFoodCourts, foodCourts, selectedFoodCourt]);
 
   // Effect to set initial food court
   useEffect(() => {
