@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartClick: (item: MenuItem) => void }) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const descriptionTooLong = item.description.length > 60;
+    const descriptionTooLong = item.description && item.description.length > 60;
 
     return (
         <Card className="flex flex-col overflow-hidden">
@@ -37,13 +37,17 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
                 />
                 <div className="flex-grow space-y-1">
                     <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
-                    <p className={cn("text-sm text-muted-foreground", !isExpanded && "line-clamp-2")}>
-                        {item.description}
-                    </p>
-                    {descriptionTooLong && (
-                        <button onClick={() => setIsExpanded(!isExpanded)} className="ml-1 text-primary hover:underline text-xs font-semibold">
-                            {isExpanded ? 'Read Less' : 'Read More'}
-                        </button>
+                    {item.description && (
+                        <>
+                        <p className={cn("text-sm text-muted-foreground", !isExpanded && "line-clamp-2")}>
+                            {item.description}
+                        </p>
+                        {descriptionTooLong && (
+                            <button onClick={() => setIsExpanded(!isExpanded)} className="ml-1 text-primary hover:underline text-xs font-semibold">
+                                {isExpanded ? 'Read Less' : 'Read More'}
+                            </button>
+                        )}
+                        </>
                     )}
                     <div className="flex items-center justify-between text-sm min-h-[20px] pt-1">
                         <div className="flex items-center gap-2">
@@ -194,7 +198,7 @@ export default function StallPage() {
         {stall.menu.map((category, index) => (
           <section key={index} id={category.title.replace(/\s+/g, '-').toLowerCase()} className="mb-12 scroll-mt-20">
             <h2 className="font-headline text-2xl font-bold md:text-3xl">{category.title}</h2>
-            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="mt-6 grid grid-cols-2 gap-4 md:gap-6">
               {category.items.map((item) => (
                 <MenuItemCard key={item.id} item={item} onAddToCartClick={handleAddToCartClick} />
               ))}
