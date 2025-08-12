@@ -1,3 +1,4 @@
+
 export interface Stall {
   id: string;
   name: string;
@@ -103,7 +104,7 @@ export interface Order {
   food_court_id: string;
   table_id: string | null;
   total_amount: number;
-  status: OrderStatus;
+  status: OrderStatus; // This will now be a DERIVED status for customer view. The source of truth is order_items.
   created_at: string;
   contact_name: string | null;
   contact_phone: string | null;
