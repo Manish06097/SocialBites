@@ -2,7 +2,7 @@
 'use server';
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CartItem, Order, PaymentStatus, PaymentMethod, OrderItem } from "@/lib/types";
+import type { CartItem, Order, PaymentStatus, PaymentMethod, OrderItem, OrderStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 interface CreateOrderPayload {
@@ -46,7 +46,7 @@ export async function createOrder(payload: CreateOrderPayload) {
             food_court_id: foodCourtId,
             table_id: payload.tableId,
             total_amount: payload.cartTotal,
-            status: 'pending',
+            status: 'pending', // Master status starts as pending
             contact_name: payload.contactName,
             contact_phone: payload.contactPhone,
             payment_method: payload.paymentMethod,
@@ -72,7 +72,7 @@ export async function createOrder(payload: CreateOrderPayload) {
         total_price: item.totalPrice,
         customizations: item.customizationChoices,
         special_instructions: item.specialInstructions,
-        status: 'pending'
+        status: 'pending' as OrderStatus // Each item starts as pending
     }));
 
     const { error: itemsError } = await supabase
@@ -81,19 +81,14 @@ export async function createOrder(payload: CreateOrderPayload) {
 
     if (itemsError) {
         console.error("Error inserting order items:", itemsError);
-        // TODO: In a real app, you might want to delete the order record here
+        // In a real app, you might want to delete the order record here
         // if the items fail to insert.
         return { error: 'Could not save order items.' };
     }
 
-    // In a real UPI integration, you would now call the PhonePe API,
-    // get a redirect URL, and return that to the client.
-    // For this simulation, we'll assume the payment is successful for UPI.
     if (payload.paymentMethod === 'upi') {
-        // Simulate a delay for payment processing
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Update payment status to 'completed'
         const { error: updateError } = await supabase
             .from('orders')
             .update({ payment_status: 'completed' })
@@ -101,8 +96,6 @@ export async function createOrder(payload: CreateOrderPayload) {
 
         if (updateError) {
             console.error("Error updating payment status:", updateError);
-            // Even if payment status update fails, the order is still placed.
-            // A background job could retry this. For now, we'll return an error.
             return { error: 'Payment processing failed.' };
         }
     }
@@ -159,8 +152,8 @@ export async function getLatestOrders() {
             )
         `)
         .eq('user_id', user.id)
-        .gt('created_at', oneHourAgo)
-        .not('status', 'in', '(completed,rejected)')
+        .gte('created_at', oneHourAgo)
+        .not('status', 'in', '("completed","rejected")') // Note the double quotes for SQL strings
         .order('created_at', { ascending: false });
 
     return { orders: data as Order[] | null, error: error?.message || null };
