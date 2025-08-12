@@ -146,11 +146,11 @@ function StallsPageContent() {
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-10 w-full" />
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
             </div>
         </div>
     );
@@ -197,7 +197,7 @@ function StallsPageContent() {
       <section>
         <h2 className="font-headline text-3xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
         {filteredStalls.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filteredStalls.map((stall: Stall) => (
               <StallCard key={stall.id} stall={stall} />
             ))}
