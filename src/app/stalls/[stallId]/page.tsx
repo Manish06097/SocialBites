@@ -26,16 +26,17 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
 
     return (
         <Card className="flex flex-col overflow-hidden">
-            <CardContent className="flex gap-4 p-4">
+             <div className="relative w-full aspect-[4/3]">
                 <Image
                     src={item.imageUrl}
                     alt={item.name}
-                    width={100}
-                    height={100}
-                    className="h-24 w-24 rounded-md object-cover bg-muted"
+                    fill
+                    className="object-cover bg-muted"
                     data-ai-hint="food item"
                 />
-                <div className="flex-grow space-y-1">
+            </div>
+            <CardContent className="p-3 flex flex-col flex-grow">
+                <div className="flex-grow space-y-2">
                     <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
                     {item.description && (
                         <>
@@ -43,7 +44,7 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
                             {item.description}
                         </p>
                         {descriptionTooLong && (
-                            <button onClick={() => setIsExpanded(!isExpanded)} className="ml-1 text-primary hover:underline text-xs font-semibold">
+                            <button onClick={() => setIsExpanded(!isExpanded)} className="text-primary hover:underline text-xs font-semibold">
                                 {isExpanded ? 'Read Less' : 'Read More'}
                             </button>
                         )}
