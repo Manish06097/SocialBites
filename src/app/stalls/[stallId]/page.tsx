@@ -50,7 +50,7 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
                         )}
                         </>
                     )}
-                    <div className="flex items-center justify-between text-sm min-h-[20px] pt-1">
+                    <div className="flex flex-col items-start text-sm min-h-[20px] pt-1 space-y-1">
                         <div className="flex items-center gap-2">
                             {item.rating && item.rating > 0 ? (
                                 <StarRating rating={item.rating} />
