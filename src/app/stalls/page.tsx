@@ -195,7 +195,7 @@ function StallsPageContent() {
       </section>
       
       <section>
-        <h2 className="font-headline text-3xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
+        <h2 className="font-headline text-2xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
         {filteredStalls.length > 0 ? (
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filteredStalls.map((stall: Stall) => (
@@ -222,3 +222,5 @@ export default function StallsPage() {
     </Suspense>
   )
 }
+
+    
