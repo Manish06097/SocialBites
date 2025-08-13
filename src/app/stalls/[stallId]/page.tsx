@@ -9,24 +9,79 @@ import { notFound, useParams } from 'next/navigation';
 import { getStallWithMenuItems, getFoodCourtById } from '@/lib/supabase/queries';
 import type { MenuItem, Stall } from '@/lib/types';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Flame, Utensils, ChevronsDown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Star, Flame, Utensils, ChevronsDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from '@/components/StarRating';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
+function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartClick: (item: MenuItem) => void }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const descriptionTooLong = item.description && item.description.length > 60;
+
+    return (
+        <Card className="flex flex-col overflow-hidden">
+             <div className="relative w-full aspect-[4/3]">
+                <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    fill
+                    className="object-cover bg-muted"
+                    data-ai-hint="food item"
+                />
+            </div>
+            <CardContent className="p-3 flex flex-col flex-grow">
+                <div className="flex-grow space-y-2">
+                    <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
+                    {item.description && (
+                        <>
+                        <p className={cn("text-sm text-muted-foreground", !isExpanded && "line-clamp-2")}>
+                            {item.description}
+                        </p>
+                        {descriptionTooLong && (
+                            <button onClick={() => setIsExpanded(!isExpanded)} className="text-primary hover:underline text-xs font-semibold">
+                                {isExpanded ? 'Read Less' : 'Read More'}
+                            </button>
+                        )}
+                        </>
+                    )}
+                    <div className="flex flex-col items-start text-sm min-h-[20px] pt-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                            {item.rating && item.rating > 0 ? (
+                                <StarRating rating={item.rating} />
+                            ) : (
+                                <Badge variant="outline" className="text-xs">New</Badge>
+                            )}
+                        </div>
+                        {item.orders > 0 && (
+                            <div className="flex items-center gap-1 text-red-500">
+                                <Flame className="h-4 w-4" />
+                                <span className="text-xs font-medium">{item.orders}+ ordered</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+            <div className="border-t p-3 flex justify-between items-center bg-muted/30 mt-auto">
+                <p className="text-xl font-bold text-primary">₹{item.price}</p>
+                <Button size="sm" onClick={() => onAddToCartClick(item)}>Add</Button>
+            </div>
+        </Card>
+    )
+}
+
 
 export default function StallPage() {
   const params = useParams();
   const stallId = Array.isArray(params.stallId) ? params.stallId[0] : params.stallId;
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [selectedItemForCart, setSelectedItemForCart] = useState<MenuItem | null>(null);
   const [stall, setStall] = useState<Stall | null>(null);
   const [loading, setLoading] = useState(true);
-  const [largeImageView, setLargeImageView] = useState<string | null>(null);
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
   const { setSelectedFoodCourt } = useFoodCourt();
@@ -65,10 +120,11 @@ export default function StallPage() {
         </div>
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
           <Skeleton className="h-10 w-full" />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-64 w-full" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
           </div>
         </div>
       </div>
@@ -79,8 +135,8 @@ export default function StallPage() {
     notFound();
   }
   
-  const handleItemClick = (item: MenuItem) => {
-    setSelectedItem(item);
+  const handleAddToCartClick = (item: MenuItem) => {
+    setSelectedItemForCart(item);
   };
   
   const handleCategoryClick = () => {
@@ -143,73 +199,22 @@ export default function StallPage() {
         {stall.menu.map((category, index) => (
           <section key={index} id={category.title.replace(/\s+/g, '-').toLowerCase()} className="mb-12 scroll-mt-20">
             <h2 className="font-headline text-2xl font-bold md:text-3xl">{category.title}</h2>
-            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-4 md:gap-6">
               {category.items.map((item) => (
-                <Card key={item.id} className="flex flex-col overflow-hidden">
-                  <button className="relative block w-full" onClick={() => setLargeImageView(item.imageUrl)}>
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
-                      width={400}
-                      height={300}
-                      className="h-40 w-full object-cover md:h-48"
-                      data-ai-hint="food item"
-                    />
-                  </button>
-                  <CardHeader>
-                    <CardTitle className="font-headline text-xl">{item.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-grow space-y-2">
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                    <div className="flex items-center justify-between text-sm min-h-[20px]">
-                        <div className="flex items-center gap-2">
-                         {item.rating && item.rating > 0 ? (
-                            <StarRating rating={item.rating} />
-                         ) : (
-                           <Badge variant="outline" className="text-xs">New</Badge>
-                         )}
-                        </div>
-                      {item.orders > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Flame className="h-4 w-4 text-red-500" />
-                          <span className="font-medium">{item.orders}+ ordered</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                  <div className="border-t p-4 flex justify-between items-center">
-                     <p className="text-xl font-bold text-primary">₹{item.price}</p>
-                     <Button onClick={() => handleItemClick(item)}>Add</Button>
-                  </div>
-                </Card>
+                <MenuItemCard key={item.id} item={item} onAddToCartClick={handleAddToCartClick} />
               ))}
             </div>
           </section>
         ))}
       </div>
       
-      {selectedItem && (
+      {selectedItemForCart && (
         <MenuItemDialog 
-            item={selectedItem} 
+            item={selectedItemForCart} 
             stall={{id: stall.id, name: stall.name, food_court_id: stall.food_court_id}} 
-            open={!!selectedItem} 
-            onOpenChange={(open) => !open && setSelectedItem(null)}
+            open={!!selectedItemForCart} 
+            onOpenChange={(open) => !open && setSelectedItemForCart(null)}
         />
-      )}
-
-      {largeImageView && (
-        <Dialog open={!!largeImageView} onOpenChange={(open) => !open && setLargeImageView(null)}>
-            <DialogContent className="max-w-3xl p-0">
-                 <Image
-                    src={largeImageView}
-                    alt="Enlarged menu item"
-                    width={800}
-                    height={600}
-                    className="w-full h-auto object-contain rounded-lg"
-                    data-ai-hint="food item"
-                  />
-            </DialogContent>
-        </Dialog>
       )}
 
        {stall.menu.length > 1 && (

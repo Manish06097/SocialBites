@@ -7,15 +7,13 @@ import type { Stall, FoodCourt, TrendingItem } from '@/lib/types';
 import StallCard from '@/components/StallCard';
 import { Input } from '@/components/ui/input';
 import { Search, UtensilsCrossed } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getStalls, getFoodCourts } from '@/lib/supabase/queries';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { trendingItems } from '@/lib/data'; // Keep trending items for now
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 function WelcomeMessage() {
   const [table, setTable] = useState<string | null>(null);
@@ -35,11 +33,11 @@ function WelcomeMessage() {
   if (!table) return null;
 
   return (
-    <div className="mb-8 rounded-lg border border-primary/20 bg-primary/10 p-4 text-center">
-      <h2 className="font-headline text-2xl font-bold text-primary">
-        Welcome to Surat Social Bites!
+    <div className="mb-6 rounded-lg border border-primary/20 bg-primary/10 p-3 text-center">
+      <h2 className="font-headline text-lg font-bold text-primary">
+        Welcome! You're at Table <span className="underline">{table}</span>.
       </h2>
-      <p className="text-foreground">You're at Table <span className="font-bold">{table}</span>. Ready for a feast?</p>
+      <p className="text-sm text-foreground/80">Ready for a feast?</p>
     </div>
   );
 }
@@ -56,38 +54,56 @@ function StallsPageContent() {
   // Effect to fetch food courts and set initial selected food court if needed
   useEffect(() => {
     const initializeFoodCourts = async () => {
-      setLoadingContent(true);
+      if (foodCourts.length > 0 && selectedFoodCourt) { // No need to fetch if we have courts and a selection
+        return;
+      }
       try {
         const fetchedFoodCourts = await getFoodCourts();
         setFoodCourts(fetchedFoodCourts); // Update food courts in context
-        
-        // Only set the initial food court if one isn't already selected.
-        if (!selectedFoodCourt && fetchedFoodCourts.length > 0) {
-            let initialFoodCourt: FoodCourt | null = null;
-            const tableInfoStr = localStorage.getItem('tableInfo');
-            if (tableInfoStr) {
-              const tableInfo = JSON.parse(tableInfoStr);
-              if (tableInfo.foodCourtId) {
-                initialFoodCourt = fetchedFoodCourts.find(fc => fc.id === tableInfo.foodCourtId) || null;
-              }
-            }
-
-            if (!initialFoodCourt) {
-              initialFoodCourt = fetchedFoodCourts[0]; // Default to the first food court
-            }
-            setSelectedFoodCourt(initialFoodCourt);
-        }
       } catch (error) {
         console.error('Error initializing food courts:', error);
       }
     };
 
     initializeFoodCourts();
-  }, [setFoodCourts, setSelectedFoodCourt, selectedFoodCourt]);
+  }, [setFoodCourts, foodCourts, selectedFoodCourt]);
+
+  // Effect to set initial food court
+  useEffect(() => {
+    if (foodCourts.length > 0 && !selectedFoodCourt) {
+        let initialFoodCourt: FoodCourt | null = null;
+        try {
+            const tableInfoStr = localStorage.getItem('tableInfo');
+            if (tableInfoStr) {
+              const tableInfo = JSON.parse(tableInfoStr);
+              if (tableInfo.foodCourtId) {
+                initialFoodCourt = foodCourts.find(fc => fc.id === tableInfo.foodCourtId) || null;
+              }
+            }
+        } catch (e) {
+            console.error("Error reading table info from localStorage", e);
+        }
+
+        if (!initialFoodCourt) {
+          initialFoodCourt = foodCourts[0]; // Default to the first food court
+        }
+        setSelectedFoodCourt(initialFoodCourt);
+    }
+  }, [foodCourts, selectedFoodCourt, setSelectedFoodCourt]);
+
 
   // Effect to fetch stalls based on selectedFoodCourt and check session
   useEffect(() => {
     const fetchDataAndCheckSession = async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace('/scan');
+        return;
+      }
+      setSessionChecked(true);
+
       if (!selectedFoodCourt) {
         setLoadingContent(true); // Keep loading if food court not yet selected
         return;
@@ -103,15 +119,6 @@ function StallsPageContent() {
       } finally {
         setLoadingContent(false);
       }
-
-      const supabase = createSupabaseBrowserClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.replace('/scan');
-        return;
-      }
-      setSessionChecked(true);
     };
 
     fetchDataAndCheckSession();
@@ -138,12 +145,12 @@ function StallsPageContent() {
     return (
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
             <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-40 w-full" />
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
             </div>
         </div>
     );
@@ -170,24 +177,27 @@ function StallsPageContent() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {allCuisines.map(cuisine => (
-            <Button
-              key={cuisine}
-              variant={selectedCuisine === cuisine ? 'default' : 'outline'}
-              onClick={() => setSelectedCuisine(cuisine === 'All' ? null : cuisine)}
-              className="rounded-full"
-            >
-              {cuisine}
-            </Button>
-          ))}
-        </div>
+        <ScrollArea className="w-full whitespace-nowrap rounded-lg mt-6">
+          <div className="flex w-max space-x-2 p-2 mx-auto">
+            {allCuisines.map(cuisine => (
+              <Button
+                key={cuisine}
+                variant={selectedCuisine === cuisine ? 'default' : 'outline'}
+                onClick={() => setSelectedCuisine(cuisine === 'All' ? 'All' : cuisine)}
+                className="rounded-full"
+              >
+                {cuisine}
+              </Button>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </section>
       
       <section>
-        <h2 className="font-headline text-3xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
+        <h2 className="font-headline text-2xl font-bold">All Stalls at {selectedFoodCourt.name}</h2>
         {filteredStalls.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filteredStalls.map((stall: Stall) => (
               <StallCard key={stall.id} stall={stall} />
             ))}
