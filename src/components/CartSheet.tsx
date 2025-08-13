@@ -26,7 +26,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
+      <SheetContent className="flex w-[90%] flex-col p-0 sm:max-w-md">
         <SheetHeader className="p-6 pb-4">
           <SheetTitle className="font-headline text-2xl">Your Food Fest</SheetTitle>
         </SheetHeader>
