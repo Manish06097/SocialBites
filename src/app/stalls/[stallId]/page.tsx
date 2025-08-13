@@ -23,9 +23,13 @@ import { cn } from '@/lib/utils';
 function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartClick: (item: MenuItem) => void }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const descriptionTooLong = item.description && item.description.length > 60;
+    const isSoldOut = !item.available;
 
     return (
-        <Card className="flex flex-col overflow-hidden">
+        <Card className={cn(
+            "flex flex-col overflow-hidden",
+            isSoldOut && "opacity-60 grayscale"
+        )}>
              <div className="relative w-full aspect-[4/3]">
                 <Image
                     src={item.imageUrl}
@@ -34,6 +38,11 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
                     className="object-cover bg-muted"
                     data-ai-hint="food item"
                 />
+                {isSoldOut && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Badge variant="destructive" className="text-sm">Sold Out</Badge>
+                  </div>
+                )}
             </div>
             <CardContent className="p-3 flex flex-col flex-grow">
                 <div className="flex-grow space-y-2">
@@ -43,14 +52,14 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
                         <p className={cn("text-sm text-muted-foreground", !isExpanded && "line-clamp-2")}>
                             {item.description}
                         </p>
-                        {descriptionTooLong && (
+                        {descriptionTooLong && !isSoldOut && (
                             <button onClick={() => setIsExpanded(!isExpanded)} className="text-primary hover:underline text-xs font-semibold">
                                 {isExpanded ? 'Read Less' : 'Read More'}
                             </button>
                         )}
                         </>
                     )}
-                    <div className="flex flex-col items-start text-sm min-h-[20px] pt-1 space-y-1">
+                    <div className="flex flex-col items-start text-sm min-h-[40px] pt-1 space-y-1">
                         <div className="flex items-center gap-2">
                             {item.rating && item.rating > 0 ? (
                                 <StarRating rating={item.rating} />
@@ -69,7 +78,9 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
             </CardContent>
             <div className="border-t p-3 flex justify-between items-center bg-muted/30 mt-auto">
                 <p className="text-xl font-bold text-primary">₹{item.price}</p>
-                <Button size="sm" onClick={() => onAddToCartClick(item)}>Add</Button>
+                <Button size="sm" onClick={() => onAddToCartClick(item)} disabled={isSoldOut}>
+                    {isSoldOut ? 'Sold Out' : 'Add'}
+                </Button>
             </div>
         </Card>
     )
@@ -120,11 +131,11 @@ export default function StallPage() {
         </div>
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
           <Skeleton className="h-10 w-full" />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
+          <div className="grid grid-cols-2 gap-6">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
           </div>
         </div>
       </div>
@@ -136,6 +147,7 @@ export default function StallPage() {
   }
   
   const handleAddToCartClick = (item: MenuItem) => {
+    if (!item.available) return;
     setSelectedItemForCart(item);
   };
   
