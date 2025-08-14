@@ -11,22 +11,14 @@ import {
 import {
     DollarSign,
     Package,
-    Bell
+    Bell,
+    CheckCircle,
+    BarChart
 } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { ArrowUpRight } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import type { OrderItem } from '@/lib/types'
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 async function getDashboardData(stallId: string) {
     const supabase = createSupabaseServerClient();
@@ -41,7 +33,7 @@ async function getDashboardData(stallId: string) {
     // Fetch order items for the given stall created today
     const { data: todayItems, error: itemsError } = await supabase
         .from('order_items')
-        .select('total_price, status, order_id, orders(contact_name, table_id)')
+        .select('total_price, status, order_id')
         .eq('stall_id', stallId)
         .gte('created_at', todayIso)
         .lt('created_at', tomorrowIso);
@@ -52,61 +44,34 @@ async function getDashboardData(stallId: string) {
             revenue: 0,
             totalOrders: 0,
             newOrdersCount: 0,
-            recentOrders: [],
+            completedItemsCount: 0,
+            averageOrderValue: 0,
         };
     }
     
     const revenue = todayItems
-        .filter(item => item.status === 'completed')
+        .filter(item => item.status === 'completed' || item.status === 'delivered')
         .reduce((sum, item) => sum + item.total_price, 0);
 
     const totalOrders = new Set(todayItems.map(item => item.order_id)).size;
     
-    // Correctly count unique new orders
     const newOrderIds = new Set(
         todayItems
             .filter(item => item.status === 'pending')
             .map(item => item.order_id)
     );
     const newOrdersCount = newOrderIds.size;
+    
+    const completedItemsCount = todayItems.filter(item => item.status === 'completed' || item.status === 'delivered').length;
 
-
-    // Fetch last 5 unique orders
-    const { data: recentOrderItems, error: recentOrdersError } = await supabase
-        .from('order_items')
-        .select('total_price, orders(display_id, contact_name, table_id)')
-        .eq('stall_id', stallId)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-     if (recentOrdersError) {
-        console.error('Error fetching recent orders:', recentOrdersError);
-     }
-     
-    // Process recent orders to group by order and sum total
-    const recentOrdersMap = (recentOrderItems || []).reduce((acc, item) => {
-        if (!item.orders) return acc;
-        const { display_id, contact_name, table_id } = item.orders;
-        if (!acc[display_id]) {
-            acc[display_id] = {
-                id: display_id,
-                customerName: contact_name || 'Guest',
-                table: table_id || 'N/A',
-                total: 0
-            };
-        }
-        acc[display_id].total += item.total_price;
-        return acc;
-
-    }, {} as Record<string, {id: string; customerName: string; table: string; total: number}>);
-
-    const recentOrders = Object.values(recentOrdersMap);
+    const averageOrderValue = totalOrders > 0 ? revenue / totalOrders : 0;
 
     return {
         revenue,
         totalOrders,
         newOrdersCount,
-        recentOrders,
+        completedItemsCount,
+        averageOrderValue,
     };
 }
 
@@ -138,7 +103,7 @@ export default async function VendorDashboard() {
     );
   }
   
-  const { revenue, totalOrders, newOrdersCount, recentOrders } = await getDashboardData(stall.id);
+  const { revenue, totalOrders, newOrdersCount, completedItemsCount, averageOrderValue } = await getDashboardData(stall.id);
 
 
   return (
@@ -159,7 +124,7 @@ export default async function VendorDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">₹{revenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Based on completed orders today
+              From completed orders
             </p>
           </CardContent>
         </Card>
@@ -171,7 +136,7 @@ export default async function VendorDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">+{totalOrders}</div>
              <p className="text-xs text-muted-foreground">
-              Total orders received today
+              Total orders received
             </p>
           </CardContent>
         </Card>
@@ -187,47 +152,31 @@ export default async function VendorDashboard() {
             </p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Order Value</CardTitle>
+            <BarChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{averageOrderValue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Average across all orders
+            </p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed Items</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{completedItemsCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Items served today
+            </p>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center">
-             <div className="grid gap-2">
-                <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>
-                  A quick look at the most recent activity.
-                </CardDescription>
-            </div>
-            <Button asChild size="sm" className="ml-auto gap-1">
-                <Link href="/vendor/dashboard/orders">
-                    View All
-                    <ArrowUpRight className="h-4 w-4" />
-                </Link>
-            </Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentOrders.map(order => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <div className="font-medium">{order.customerName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Table {order.table}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">₹{order.total.toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </>
   )
 }
