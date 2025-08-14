@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { MenuManagement } from '@/components/MenuManagement';
 import type { MenuItem } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 async function fetchVendorData() {
   const supabase = await createSupabaseServerClient();
@@ -50,15 +51,21 @@ async function fetchVendorData() {
 
 function MenuPageSkeleton() {
     return (
-        <div className="flex items-center justify-between">
-            <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
-            <div className="h-10 w-36 rounded-md bg-gray-200 animate-pulse" />
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h1 className="font-headline text-lg font-semibold md:text-2xl">Menu Management</h1>
+                <Skeleton className="h-10 w-36" />
+            </div>
+            <div className="space-y-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+            </div>
         </div>
     );
 }
 
-
-export default async function VendorMenuPage() {
+async function MenuPageContent() {
   const { stall, menuItems } = await fetchVendorData();
 
   if (!stall) {
@@ -70,9 +77,13 @@ export default async function VendorMenuPage() {
     );
   }
 
+  return <MenuManagement initialMenuItems={menuItems} stallId={stall.id} />;
+}
+
+export default async function VendorMenuPage() {
   return (
     <Suspense fallback={<MenuPageSkeleton />}>
-        <MenuManagement initialMenuItems={menuItems} stallId={stall.id} />
+        <MenuPageContent />
     </Suspense>
   );
 }
