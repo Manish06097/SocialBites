@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, CookingPot, PackageCheck, DollarSign } from 'lucide-react';
+import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus, OrderItem } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderItemStatus, markOrderAsPaid } from '@/app/vendor/actions';
@@ -103,7 +103,10 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
                 <li key={item.id} className="text-sm">
                     <div className="flex justify-between">
                         <span className="font-semibold">{item.menu_items?.name}</span>
-                        <span className="font-mono font-semibold">x{item.quantity}</span>
+                        <div className="flex items-center gap-3">
+                            <span className="font-mono font-semibold">x{item.quantity}</span>
+                            <span className="font-semibold w-16 text-right">₹{item.total_price.toFixed(2)}</span>
+                        </div>
                     </div>
                      <OrderItemCustomizations customizations={item.customizations} />
                     {item.special_instructions && (
@@ -137,12 +140,6 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
             </Button>
         )}
         {vendorOrderStatus === 'preparing' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'ready_for_pickup')} disabled={isUpdating}>
-                <CookingPot className="mr-2 h-4 w-4" />
-                Mark as Ready
-            </Button>
-        )}
-        {vendorOrderStatus === 'ready_for_pickup' && (
              <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isUpdating}>
                 <PackageCheck className="mr-2 h-4 w-4" />
                 Mark as Delivered
@@ -299,21 +296,7 @@ function OrdersDisplay() {
   }
   
   if (isLoading || !stallId) {
-    return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="font-headline text-lg font-semibold md:text-2xl">
-                Order Management
-                </h1>
-            </div>
-            <Skeleton className="h-12 w-full" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
-    )
+    return <OrdersPageSkeleton />;
   }
   
   const getOrderStatusForVendor = (order: Order): OrderStatus => {
@@ -323,8 +306,7 @@ function OrdersDisplay() {
 
   const pendingOrders = orders.filter(o => getOrderStatusForVendor(o) === 'pending');
   const preparingOrders = orders.filter(o => ['accepted', 'preparing'].includes(getOrderStatusForVendor(o)));
-  const readyOrders = orders.filter(o => getOrderStatusForVendor(o) === 'ready_for_pickup');
-  const deliveredOrders = orders.filter(o => ['delivered', 'completed', 'rejected'].includes(getOrderStatusForVendor(o)));
+  const completedOrders = orders.filter(o => ['delivered', 'completed', 'rejected'].includes(getOrderStatusForVendor(o)));
 
   return (
     <>
@@ -334,17 +316,14 @@ function OrdersDisplay() {
         </h1>
       </div>
       <Tabs defaultValue="pending" className="mt-4">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="pending">
             New <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="preparing">
             Preparing <Badge className="ml-2">{preparingOrders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="ready">
-            Ready <Badge className="ml-2">{readyOrders.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="delivered">Delivered</TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
         <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -356,14 +335,9 @@ function OrdersDisplay() {
              {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
-        <TabsContent value="ready" className="mt-4">
+        <TabsContent value="completed" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {readyOrders.length > 0 ? readyOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are ready for pickup.</p>}
-          </div>
-        </TabsContent>
-        <TabsContent value="delivered" className="mt-4">
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {deliveredOrders.length > 0 ? deliveredOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No delivered or completed orders yet today.</p>}
+             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
@@ -371,23 +345,28 @@ function OrdersDisplay() {
   )
 }
 
+function OrdersPageSkeleton() {
+  return (
+    <div className="space-y-4">
+        <div className="flex items-center justify-between">
+            <h1 className="font-headline text-lg font-semibold md:text-2xl">
+            Order Management
+            </h1>
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+    </div>
+  )
+}
+
+
 export default function VendorOrdersPage() {
   return (
-    <Suspense fallback={
-       <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="font-headline text-lg font-semibold md:text-2xl">
-                Order Management
-                </h1>
-            </div>
-            <Skeleton className="h-12 w-full" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
-    }>
+    <Suspense fallback={<OrdersPageSkeleton />}>
       <OrdersDisplay />
     </Suspense>
   )

@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { Metadata } from 'next';
+import { ThemeProvider } from 'next-themes';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { CartProvider } from '@/context/CartProvider';
@@ -42,8 +43,15 @@ export default function RootLayout({
     return (
        <html lang="en" className="scroll-smooth" suppressHydrationWarning={true}>
          <body className="font-body antialiased">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             {children}
             <Toaster />
+          </ThemeProvider>
          </body>
        </html>
     )
@@ -60,25 +68,32 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Satoshi:wght@400;500;700;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <FoodCourtProvider>
-          <CartProvider>
-             {isHomePage ? (
-                <>
-                  {children}
-                </>
-              ) : (
-                <>
-                  <div className="flex min-h-screen flex-col pb-16 md:pb-0">
-                    <Header />
-                    <main className="flex-grow">{children}</main>
-                    <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
-                  </div>
-                  <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
-                </>
-              )}
-            <Toaster />
-          </CartProvider>
-        </FoodCourtProvider>
+         <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+          <FoodCourtProvider>
+            <CartProvider>
+              {isHomePage ? (
+                  <>
+                    {children}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+                      <Header />
+                      <main className="flex-grow">{children}</main>
+                      <BottomNavBar onCartClick={() => setIsCartOpen(true)} />
+                    </div>
+                    <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
+                  </>
+                )}
+              <Toaster />
+            </CartProvider>
+          </FoodCourtProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
