@@ -1,12 +1,30 @@
 
 'use server';
 
+import { Suspense } from 'react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import VendorProfileClientPage from './client-page';
 import type { Stall } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function VendorProfilePage() {
+function ProfilePageSkeleton() {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-10 w-24" />
+            </div>
+            <div className="grid gap-6">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
+        </div>
+    );
+}
+
+async function VendorProfile() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -29,6 +47,14 @@ export default async function VendorProfilePage() {
         </div>
     );
   }
-
+  
   return <VendorProfileClientPage stall={stall as Stall} />
+}
+
+export default async function VendorProfilePage() {
+    return (
+        <Suspense fallback={<ProfilePageSkeleton />}>
+            <VendorProfile />
+        </Suspense>
+    )
 }
