@@ -103,7 +103,10 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
                 <li key={item.id} className="text-sm">
                     <div className="flex justify-between">
                         <span className="font-semibold">{item.menu_items?.name}</span>
-                        <span className="font-mono font-semibold">x{item.quantity}</span>
+                        <div className="flex items-center gap-3">
+                            <span className="font-mono font-semibold">x{item.quantity}</span>
+                            <span className="font-semibold w-16 text-right">₹{item.total_price.toFixed(2)}</span>
+                        </div>
                     </div>
                      <OrderItemCustomizations customizations={item.customizations} />
                     {item.special_instructions && (
@@ -377,3 +380,5 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
+
+    
