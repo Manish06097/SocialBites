@@ -296,21 +296,7 @@ function OrdersDisplay() {
   }
   
   if (isLoading || !stallId) {
-    return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="font-headline text-lg font-semibold md:text-2xl">
-                Order Management
-                </h1>
-            </div>
-            <Skeleton className="h-12 w-full" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
-    )
+    return <OrdersPageSkeleton />;
   }
   
   const getOrderStatusForVendor = (order: Order): OrderStatus => {
@@ -359,26 +345,29 @@ function OrdersDisplay() {
   )
 }
 
+function OrdersPageSkeleton() {
+  return (
+    <div className="space-y-4">
+        <div className="flex items-center justify-between">
+            <h1 className="font-headline text-lg font-semibold md:text-2xl">
+            Order Management
+            </h1>
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+    </div>
+  )
+}
+
+
 export default function VendorOrdersPage() {
   return (
-    <Suspense fallback={
-       <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="font-headline text-lg font-semibold md:text-2xl">
-                Order Management
-                </h1>
-            </div>
-            <Skeleton className="h-12 w-full" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
-    }>
+    <Suspense fallback={<OrdersPageSkeleton />}>
       <OrdersDisplay />
     </Suspense>
   )
 }
-
-    

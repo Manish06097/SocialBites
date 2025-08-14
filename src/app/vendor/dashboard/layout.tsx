@@ -37,6 +37,15 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
 
+  // Exact match for the dashboard, startsWith for others.
+   const isActive = (href: string) => {
+    if (href === '/vendor/dashboard') {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
+
+
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -59,7 +68,7 @@ export default function DashboardLayout({
                   href={href}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                    pathname === href && 'bg-muted text-primary'
+                    isActive(href) && 'bg-muted text-primary'
                   )}
                 >
                   <Icon className="h-4 w-4" />
