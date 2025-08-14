@@ -37,8 +37,8 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
 
-  // Exact match for the dashboard, startsWith for others.
    const isActive = (href: string) => {
+    // Exact match for the dashboard, otherwise check for start.
     if (href === '/vendor/dashboard') {
       return pathname === href;
     }
