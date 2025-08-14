@@ -13,7 +13,7 @@ export async function signOut() {
 }
 
 export async function getVendorStallId(): Promise<string | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
@@ -138,8 +138,6 @@ async function updateMasterOrderStatus(orderId: string) {
         masterStatus = 'accepted';
     } else if (allItemStatuses.some(s => s === 'preparing')) {
         masterStatus = 'preparing';
-    } else if (allItemStatuses.some(s => s === 'ready_for_pickup')) {
-        masterStatus = 'ready_for_pickup';
     } else if (allItemStatuses.some(s => s === 'delivered')) {
         masterStatus = 'delivered';
     }

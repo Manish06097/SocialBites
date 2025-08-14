@@ -64,7 +64,7 @@ export interface TrendingItem {
   price: number;
 }
 
-export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready_for_pickup' | 'delivered' | 'completed' | 'rejected';
+export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'delivered' | 'completed' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed';
 export type PaymentMethod = 'upi' | 'cod';
 
