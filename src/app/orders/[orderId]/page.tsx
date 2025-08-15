@@ -2,9 +2,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { getLatestOrders, getPastOrders } from '../actions';
 import OrderPageClient from '@/components/OrderPageClient';
-import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function OrderTrackingPageSkeleton() {
@@ -25,49 +23,10 @@ function OrderTrackingPageSkeleton() {
 }
 
 function OrderTrackingPageContent() {
-  const [initialLatestOrders, setInitialLatestOrders] = useState<Order[]>([]);
-  const [initialPastOrders, setInitialPastOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const { orders: latestOrders, error: latestOrdersError } = await getLatestOrders();
-        if (latestOrdersError) throw new Error(latestOrdersError);
-
-        const latestOrderIds = latestOrders?.map(o => o.id) || [];
-        const { orders: pastOrders, error: pastOrdersError } = await getPastOrders({ currentOrderIds: latestOrderIds, limit: 5 });
-        if (pastOrdersError) throw new Error(pastOrdersError);
-        
-        setInitialLatestOrders(latestOrders || []);
-        setInitialPastOrders(pastOrders || []);
-
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading) {
-    return <OrderTrackingPageSkeleton />;
-  }
-  
-  if (error) {
-     return <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 text-center text-red-500">Error: {error}</div>;
-  }
-
+  // This component now only renders the client component that handles its own data fetching.
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
-      <OrderPageClient
-        initialLatestOrders={initialLatestOrders}
-        initialPastOrders={initialPastOrders}
-      />
+      <OrderPageClient />
     </div>
   );
 }
