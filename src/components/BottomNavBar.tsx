@@ -23,22 +23,9 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
   const { cartCount } = useCart();
 
   const isActive = (href: string) => {
-    // Exact match for the base paths
-    if (pathname === href) {
-        return true;
-    }
-    // Handle nested routes: active if the path starts with the href AND is not the base path itself (which is handled above)
-    // and ensure it ends with a slash or is the full path.
-    if (pathname.startsWith(href) && href !== '/') {
-        // e.g. /orders/xyz should match /orders
-        if (pathname.startsWith(href + '/')) {
-             return true;
-        }
-    }
-    // Specific case for stalls
-    if (href === '/stalls' && /^\/stalls\/[^/]+$/.test(pathname)) {
-        return true;
-    }
+    // An exact match or a path that starts with the href followed by a slash for nested routes.
+    return pathname === href || pathname.startsWith(href + '/');
+  };
 
     return false;
   };
