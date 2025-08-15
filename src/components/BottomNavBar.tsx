@@ -23,24 +23,30 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
   const { cartCount } = useCart();
 
   const isActive = (href: string) => {
-    if (href === '/stalls') {
-      // Active for /stalls or /stalls/some-id, but NOT /stalls/anything/else
-      return pathname === href || /^\/stalls\/[^/]+$/.test(pathname);
+    // Exact match for the base paths
+    if (pathname === href) {
+        return true;
     }
-    if (href === '/orders') {
-      // Active for /orders or /orders/some-id
-      return pathname === href || pathname.startsWith('/orders/');
+    // Handle nested routes: active if the path starts with the href AND is not the base path itself (which is handled above)
+    // and ensure it ends with a slash or is the full path.
+    if (pathname.startsWith(href) && href !== '/') {
+        // e.g. /orders/xyz should match /orders
+        if (pathname.startsWith(href + '/')) {
+             return true;
+        }
     }
-    if (href === '/profile') {
-      return pathname === href;
+    // Specific case for stalls
+    if (href === '/stalls' && /^\/stalls\/[^/]+$/.test(pathname)) {
+        return true;
     }
-    return false; // Default to false for any other cases
+
+    return false;
   };
 
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
-      <div className="container mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around px-4">
+      <div key={pathname} className="container mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around px-4">
         {navItems.map(({ href, icon: Icon, label }) => {
           return (
             <Link
