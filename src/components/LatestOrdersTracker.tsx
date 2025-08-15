@@ -2,12 +2,13 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Order, OrderItem, OrderStatus } from '@/lib/types';
 import { Separator } from './ui/separator';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const statusDisplayConfig: Record<OrderStatus, { text: string; className: string, description: string }> = {
   pending: { text: 'Pending', className: 'bg-gray-100 text-gray-800 animate-pulse', description: 'Your order is waiting for the stalls to accept.' },
@@ -116,10 +117,65 @@ function OrderCard({order}: {order: Order}) {
 }
 
 interface LatestOrdersTrackerProps {
-  orders: Order[];
+  initialOrders: Order[];
 }
 
-export default function LatestOrdersTracker({ orders }: LatestOrdersTrackerProps) {
+export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrackerProps) {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+
+  useEffect(() => {
+    setOrders(initialOrders); // Update state if initialOrders prop changes
+  }, [initialOrders]);
+
+  useEffect(() => {
+    console.log("LatestOrdersTracker: Component mounted, setting up subscription.");
+    const supabase = createSupabaseBrowserClient();
+    let channel: any = null; // Use 'any' for RealtimeChannel to avoid import issues for now
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("LatestOrdersTracker: No user found, cannot set up subscription.");
+        return;
+      }
+      console.log("LatestOrdersTracker: User found, setting up subscription for user ID:", user.id);
+
+      channel = supabase
+        .channel('orders_status_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}` // Subscribe to all orders for the current user
+          },
+          (payload) => {
+            console.log("LatestOrdersTracker: Received real-time update for order:", payload.new);
+            const updatedOrder = payload.new as Order;
+            setOrders(prevOrders => {
+              const newOrders = prevOrders.map(order => 
+                order.id === updatedOrder.id ? updatedOrder : order
+              );
+              console.log("LatestOrdersTracker: Orders state updated.", newOrders);
+              return newOrders;
+            });
+          }
+        )
+        .subscribe((status) => {
+          console.log("LatestOrdersTracker: Supabase channel subscription status:", status);
+        });
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        console.log("LatestOrdersTracker: Cleaning up subscription.");
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []); // Empty dependency array: subscribe once on mount
 
   if (orders.length === 0) {
     return (

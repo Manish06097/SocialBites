@@ -85,7 +85,7 @@ export default function CheckoutPage() {
         } else if (result.orderId) {
             clearCart();
             setIsSuccess(true);
-            setTimeout(() => router.push(`/orders/${result.orderId}`), 4000);
+            setTimeout(() => router.push('/orders'), 4000);
         }
     });
   };

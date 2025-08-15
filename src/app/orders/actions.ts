@@ -100,7 +100,6 @@ export async function createOrder(payload: CreateOrderPayload) {
         }
     }
     
-    revalidatePath(`/orders/${orderId}`);
     revalidatePath(`/orders`);
     return { orderId };
 }
@@ -190,7 +189,13 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
 
     const { data, error } = await query;
 
-    return { orders: data as Order[] | null, error: error?.message || null };
+    const fetchedOrderIds = data ? data.map(order => order.id) : [];
+
+    return { 
+        orders: data as Order[] | null, 
+        latestOrderIds: fetchedOrderIds,
+        error: error?.message || null 
+    };
 }
 
 interface ReviewPayload {
