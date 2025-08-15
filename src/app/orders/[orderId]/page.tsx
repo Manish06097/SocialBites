@@ -1,44 +1,81 @@
 
-'use server';
+'use client';
 
-import type { Order } from '@/lib/types';
+import { useState, useEffect, Suspense } from 'react';
 import { getLatestOrders, getPastOrders } from '../actions';
 import OrderPageClient from '@/components/OrderPageClient';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import type { Order } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function OrderTrackingPage({ params }: { params: { orderId: string } }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+function OrderTrackingPageSkeleton() {
+  return (
+    <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
+        <div className="space-y-6">
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </div>
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Past Orders</h2>
+        <Skeleton className="h-48 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
 
-  const { orderId } = params;
+function OrderTrackingPageContent() {
+  const [initialLatestOrders, setInitialLatestOrders] = useState<Order[]>([]);
+  const [initialPastOrders, setInitialPastOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!user) {
-    // This should ideally be handled by middleware, but as a safeguard
-    redirect(`/login?redirect=/orders/${orderId}`);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { orders: latestOrders, error: latestOrdersError } = await getLatestOrders();
+        if (latestOrdersError) throw new Error(latestOrdersError);
+
+        const latestOrderIds = latestOrders?.map(o => o.id) || [];
+        const { orders: pastOrders, error: pastOrdersError } = await getPastOrders({ currentOrderIds: latestOrderIds, limit: 5 });
+        if (pastOrdersError) throw new Error(pastOrdersError);
+        
+        setInitialLatestOrders(latestOrders || []);
+        setInitialPastOrders(pastOrders || []);
+
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <OrderTrackingPageSkeleton />;
   }
   
-  const {orders: initialLatestOrders, error: latestOrdersError} = await getLatestOrders();
-  
-  if (latestOrdersError) {
-    console.error(latestOrdersError);
-    // Render an error state or a fallback
-  }
-
-  const latestOrderIds = initialLatestOrders?.map(o => o.id) || [];
-  const {orders: initialPastOrders, error: pastOrdersError} = await getPastOrders({currentOrderIds: latestOrderIds, limit: 5});
-
-   if (pastOrdersError) {
-    console.error(pastOrdersError);
-    // Render an error state or a fallback
+  if (error) {
+     return <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 text-center text-red-500">Error: {error}</div>;
   }
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
       <OrderPageClient
-        initialLatestOrders={initialLatestOrders || []}
-        initialPastOrders={initialPastOrders || []}
+        initialLatestOrders={initialLatestOrders}
+        initialPastOrders={initialPastOrders}
       />
     </div>
   );
+}
+
+export default function OrderTrackingPage() {
+    return (
+        <Suspense fallback={<OrderTrackingPageSkeleton />}>
+            <OrderTrackingPageContent />
+        </Suspense>
+    )
 }

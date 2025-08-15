@@ -22,9 +22,13 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
   const { cartCount } = useCart();
 
   const isActive = (href: string) => {
-    // Exact match for /stalls, otherwise check for start.
+    // This logic ensures that /orders is active for /orders/[orderId]
+    // but not for anything else, and /stalls is active for /stalls and /stalls/[stallId]
     if (href === '/stalls') {
-      return pathname === href;
+      return pathname === href || pathname.startsWith('/stalls/');
+    }
+     if (href === '/orders') {
+      return pathname === href || pathname.startsWith('/orders/');
     }
     return pathname.startsWith(href);
   };
