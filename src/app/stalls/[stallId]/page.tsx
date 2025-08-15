@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -10,7 +10,7 @@ import { getStallWithMenuItems, getFoodCourtById } from '@/lib/supabase/queries'
 import type { MenuItem, Stall } from '@/lib/types';
 import { useFoodCourt } from '@/context/FoodCourtProvider';
 import { Card, CardContent } from '@/components/ui/card';
-import { Star, Flame, Utensils, ChevronsDown, X } from 'lucide-react';
+import { Star, Flame, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MenuItemDialog } from '@/components/MenuItemDialog';
@@ -86,37 +86,7 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
     )
 }
 
-
-export default function StallPage() {
-  const params = useParams();
-  const stallId = Array.isArray(params.stallId) ? params.stallId[0] : params.stallId;
-  const [selectedItemForCart, setSelectedItemForCart] = useState<MenuItem | null>(null);
-  const [stall, setStall] = useState<Stall | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
-
-  const { setSelectedFoodCourt } = useFoodCourt();
-
-  useEffect(() => {
-    async function fetchStallData() {
-      if (!stallId) {
-        notFound();
-        return;
-      }
-      setLoading(true);
-      const fetchedStall = await getStallWithMenuItems(stallId);
-      setStall(fetchedStall);
-
-      if (fetchedStall && fetchedStall.food_court_id) {
-        const foodCourt = await getFoodCourtById(fetchedStall.food_court_id);
-        setSelectedFoodCourt(foodCourt);
-      }
-      setLoading(false);
-    }
-    fetchStallData();
-  }, [stallId, setSelectedFoodCourt]);
-
-  if (loading) {
+function StallPageSkeleton() {
     return (
       <div className="w-full">
         <Skeleton className="relative h-48 w-full md:h-64" />
@@ -131,7 +101,7 @@ export default function StallPage() {
         </div>
         <div className="container mx-auto px-4 py-8 md:px-6 space-y-12">
           <Skeleton className="h-10 w-full" />
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
             <Skeleton className="h-64 w-full" />
             <Skeleton className="h-64 w-full" />
             <Skeleton className="h-64 w-full" />
@@ -142,8 +112,50 @@ export default function StallPage() {
     );
   }
 
+
+function StallPageContent() {
+  const params = useParams();
+  const stallId = Array.isArray(params.stallId) ? params.stallId[0] : params.stallId;
+  const [selectedItemForCart, setSelectedItemForCart] = useState<MenuItem | null>(null);
+  const [stall, setStall] = useState<Stall | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
+
+  const { setSelectedFoodCourt } = useFoodCourt();
+
+  useEffect(() => {
+    async function fetchStallData() {
+      if (!stallId) {
+        setLoading(false);
+        notFound();
+        return;
+      }
+      setLoading(true);
+      try {
+        const fetchedStall = await getStallWithMenuItems(stallId);
+        setStall(fetchedStall);
+
+        if (fetchedStall && fetchedStall.food_court_id) {
+          const foodCourt = await getFoodCourtById(fetchedStall.food_court_id);
+          setSelectedFoodCourt(foodCourt);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stall data", error)
+        setStall(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchStallData();
+  }, [stallId, setSelectedFoodCourt]);
+
+  if (loading) {
+    return <StallPageSkeleton />;
+  }
+
   if (!stall) {
     notFound();
+    return null;
   }
   
   const handleAddToCartClick = (item: MenuItem) => {
@@ -261,4 +273,13 @@ export default function StallPage() {
       )}
     </>
   );
+}
+
+
+export default function StallPage() {
+    return (
+        <Suspense fallback={<StallPageSkeleton />}>
+            <StallPageContent />
+        </Suspense>
+    )
 }

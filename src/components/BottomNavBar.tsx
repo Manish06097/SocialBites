@@ -21,20 +21,25 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
   const pathname = usePathname();
   const { cartCount } = useCart();
 
+  const isActive = (href: string) => {
+    // Exact match for /stalls, otherwise check for start.
+    if (href === '/stalls') {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
       <div className="container mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around px-4">
         {navItems.map(({ href, icon: Icon, label }) => {
-          // Simplified and corrected isActive logic
-          const isActive = (href === '/stalls') ? pathname === href : pathname.startsWith(href);
-          
           return (
             <Link
               key={label}
               href={href}
               className={cn(
                 'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary',
-                isActive && 'text-primary'
+                isActive(href) && 'text-primary'
               )}
             >
               <Icon className="h-6 w-6" />
