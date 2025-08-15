@@ -27,8 +27,7 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-    return false;
-  };
+
 
 
   return (
