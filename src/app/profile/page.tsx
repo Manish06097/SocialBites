@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { ChevronRight, LogOut, Package, User as UserIcon, HelpCircle } from 'luc
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 interface TableInfo {
   tableId: string;
@@ -20,7 +22,33 @@ interface Profile {
     full_name: string;
 }
 
-export default function ProfilePage() {
+function ProfilePageSkeleton() {
+  return (
+    <div className="container mx-auto max-w-2xl px-4 py-8 md:px-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-20 w-20 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+      </div>
+      <Card className="mt-8">
+        <CardHeader>
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-5 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+      <Skeleton className="mt-8 h-10 w-full" />
+    </div>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const [tableInfo, setTableInfo] = useState<TableInfo | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -80,8 +108,7 @@ export default function ProfilePage() {
   const displayInitial = displayName.charAt(0).toUpperCase();
 
   if (loading) {
-      // You can add a proper skeleton loader here
-      return <div>Loading...</div>
+      return <ProfilePageSkeleton />;
   }
 
   return (
@@ -141,4 +168,12 @@ export default function ProfilePage() {
       </div>
     </div>
   );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<ProfilePageSkeleton />}>
+            <ProfilePageContent />
+        </Suspense>
+    )
 }
