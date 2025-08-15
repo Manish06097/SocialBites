@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -22,16 +23,20 @@ export default function BottomNavBar({ onCartClick }: BottomNavBarProps) {
   const { cartCount } = useCart();
 
   const isActive = (href: string) => {
-    // This logic ensures that /orders is active for /orders/[orderId]
-    // but not for anything else, and /stalls is active for /stalls and /stalls/[stallId]
     if (href === '/stalls') {
-      return pathname === href || pathname.startsWith('/stalls/');
+      // Active for /stalls or /stalls/some-id, but NOT /stalls/anything/else
+      return pathname === href || /^\/stalls\/[^/]+$/.test(pathname);
     }
-     if (href === '/orders') {
+    if (href === '/orders') {
+      // Active for /orders or /orders/some-id
       return pathname === href || pathname.startsWith('/orders/');
     }
-    return pathname.startsWith(href);
+    if (href === '/profile') {
+      return pathname === href;
+    }
+    return false; // Default to false for any other cases
   };
+
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
