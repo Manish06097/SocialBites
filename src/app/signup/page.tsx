@@ -38,7 +38,7 @@ function SignupContent() {
   const loginPath = `/login?${searchParams.toString()}`;
 
   // Invisible reCAPTCHA setup
-  useEffect(() => {
+  const configureRecaptcha = () => {
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
@@ -54,7 +54,7 @@ function SignupContent() {
         }
       });
     }
-  }, [toast]);
+  }
   
   const handleSendOtp = async () => {
     if (phoneNumber.length !== 10) {
@@ -62,6 +62,7 @@ function SignupContent() {
       return;
     }
     
+    configureRecaptcha();
     const appVerifier = window.recaptchaVerifier;
     const formattedPhoneNumber = `+91${phoneNumber}`;
 
@@ -79,8 +80,7 @@ function SignupContent() {
         if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
            appVerifier.render().then((widgetId: any) => {
              if (widgetId) {
-                window.recaptchaWidgetId = widgetId;
-                window.grecaptcha.reset(window.recaptchaWidgetId);
+                window.grecaptcha.reset(widgetId);
              }
            });
         }
@@ -209,10 +209,13 @@ function SignupContent() {
                   {phoneAuthState === 'idle' && (
                      <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
                   )}
+                  {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
+                     <Button type="button" variant="outline" onClick={handleSendOtp} disabled={loading}>Resend</Button>
+                  )}
                 </div>
               </div>
               
-              {phoneAuthState === 'otpSent' && (
+              {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
                 <div className="space-y-2">
                     <Label htmlFor="otp">Enter OTP</Label>
                     <div className="flex items-center gap-2">
@@ -226,15 +229,11 @@ function SignupContent() {
                             onChange={(e) => setOtp(e.target.value)}
                             maxLength={6}
                          />
-                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6}>Verify</Button>
+                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
+                           {phoneAuthState === 'verifying' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                        </Button>
                     </div>
                 </div>
-              )}
-               {phoneAuthState === 'verifying' && (
-                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Verifying OTP...</span>
-                 </div>
               )}
               {phoneAuthState === 'verified' && (
                   <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">

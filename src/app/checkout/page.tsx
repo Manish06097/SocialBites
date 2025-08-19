@@ -242,15 +242,18 @@ export default function CheckoutPage() {
                        required 
                        value={phoneNumber}
                        onChange={(e) => setPhoneNumber(e.target.value)}
-                       disabled={phoneAuthState === 'otpSent' || phoneAuthState === 'verified'}
+                       disabled={phoneAuthState !== 'idle'}
                        maxLength={10}
                      />
-                     {phoneAuthState !== 'otpSent' && phoneAuthState !== 'verified' && (
+                     {phoneAuthState === 'idle' && (
                         <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
+                     )}
+                     {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
+                       <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending}>Resend</Button>
                      )}
                    </div>
               </div>
-              {phoneAuthState === 'otpSent' && (
+              {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
                 <div className="space-y-2">
                     <Label htmlFor="otp">Enter OTP</Label>
                     <div className="flex items-center gap-2">
@@ -264,15 +267,11 @@ export default function CheckoutPage() {
                             onChange={(e) => setOtp(e.target.value)}
                             maxLength={6}
                          />
-                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6}>Verify</Button>
+                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
+                            {phoneAuthState === 'verifying' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                        </Button>
                     </div>
                 </div>
-              )}
-               {phoneAuthState === 'verifying' && (
-                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Verifying OTP...</span>
-                 </div>
               )}
               {phoneAuthState === 'verified' && (
                   <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">
