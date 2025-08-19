@@ -167,7 +167,7 @@ function SignupContent() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp} className="space-y-4">
-            <fieldset disabled={loading} className="space-y-4">
+            <fieldset disabled={loading || phoneAuthState === 'verifying'} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="full-name">Full Name</Label>
                 <Input
@@ -210,7 +210,7 @@ function SignupContent() {
                      <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
                   )}
                   {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
-                     <Button type="button" variant="outline" onClick={handleSendOtp} disabled={loading}>Resend</Button>
+                     <Button type="button" variant="outline" onClick={handleSendOtp} disabled={loading || phoneAuthState === 'verifying'}>Resend</Button>
                   )}
                 </div>
               </div>
@@ -230,7 +230,7 @@ function SignupContent() {
                             maxLength={6}
                          />
                         <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
-                           {phoneAuthState === 'verifying' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                           {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Verify'}
                         </Button>
                     </div>
                 </div>

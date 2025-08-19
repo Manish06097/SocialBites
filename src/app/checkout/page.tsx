@@ -220,7 +220,7 @@ export default function CheckoutPage() {
       <div id="recaptcha-container"></div>
       <h1 className="mb-8 font-headline text-4xl font-bold">Checkout</h1>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
-        <fieldset disabled={isPending} className="space-y-6">
+        <fieldset disabled={isPending || phoneAuthState === 'verifying'} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Contact Information</CardTitle>
@@ -249,7 +249,7 @@ export default function CheckoutPage() {
                         <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
                      )}
                      {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
-                       <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending}>Resend</Button>
+                       <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending || phoneAuthState === 'verifying'}>Resend</Button>
                      )}
                    </div>
               </div>
@@ -268,7 +268,7 @@ export default function CheckoutPage() {
                             maxLength={6}
                          />
                         <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
-                            {phoneAuthState === 'verifying' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                            {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : 'Verify'}
                         </Button>
                     </div>
                 </div>
