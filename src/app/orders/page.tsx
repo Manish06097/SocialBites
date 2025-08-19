@@ -1,38 +1,51 @@
+'use client';
 
-'use server';
+import { useState } from 'react';
+import PastOrdersList from "@/components/PastOrdersList";
+import LatestOrdersTracker from "@/components/LatestOrdersTracker";
+import type { Order } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+interface OrdersPageProps {
+    activeOrders: Order[];
+    pastOrders: Order[];
+    latestOrderIds: string[];
+}
 
-// This page now acts as a redirector to the user's most recent order.
-export default async function OrdersPage() {
-    const supabase = await createSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+export default function OrdersPage({ activeOrders, pastOrders: initialPastOrders, latestOrderIds }: OrdersPageProps) {
+    const [pastOrders, setPastOrders] = useState<Order[]>(initialPastOrders);
 
-    if (!user) {
-        redirect('/login');
-    }
-
-    const { data: latestOrder, error } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-    
-    if (error || !latestOrder) {
-        // If there are no orders, you might want to show a specific message.
-        // For now, we'll create a placeholder page for this case.
-        // A better approach would be a dedicated "No Orders Yet" component.
-        return (
-            <div className="container mx-auto flex h-[70vh] flex-col items-center justify-center text-center">
-                <h1 className="font-headline text-3xl font-bold">No Orders Found</h1>
-                <p className="mt-4 text-muted-foreground">You haven't placed any orders yet. Let's get you some food!</p>
-            </div>
-        )
-    }
-
-    // Redirect to the latest order's tracking page.
-    redirect(`/orders/${latestOrder.id}`);
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <h1 className="font-headline text-3xl font-bold mb-6">My Orders</h1>
+            <Tabs defaultValue="active" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="active">Active Orders</TabsTrigger>
+                    <TabsTrigger value="past">Past Orders</TabsTrigger>
+                </TabsList>
+                <TabsContent value="active" className="mt-6">
+                    {activeOrders.length > 0 ? (
+                        <LatestOrdersTracker initialOrders={activeOrders} />
+                    ) : (
+                        <div className="text-center text-muted-foreground p-6">
+                            You have no active orders.
+                        </div>
+                    )}
+                </TabsContent>
+                <TabsContent value="past" className="mt-6">
+                    {pastOrders.length > 0 ? (
+                        <PastOrdersList 
+                            initialOrders={pastOrders} 
+                            setPastOrders={setPastOrders} 
+                            latestOrderIds={latestOrderIds} 
+                        />
+                    ) : (
+                        <div className="text-center text-muted-foreground p-6">
+                            You have no past orders.
+                        </div>
+                    )}
+                </TabsContent>
+            </Tabs>
+        </div>
+    );
 }
