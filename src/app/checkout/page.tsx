@@ -88,10 +88,17 @@ export default function CheckoutPage() {
       toast({ title: "OTP Sent!", description: `An OTP has been sent to ${formattedPhoneNumber}`});
     } catch (error: any) {
         console.error("Error sending OTP:", error);
-        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: error.message });
-        appVerifier.render().then((widgetId: any) => {
-            window.grecaptcha.reset(widgetId);
-        });
+        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: `Error: ${error.code}. Check the console for more details.` });
+        
+        // This is a potential workaround for reCAPTCHA issues.
+        // It tries to reset the reCAPTCHA widget if it exists.
+        if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
+           appVerifier.render().then((widgetId: any) => {
+             if (widgetId) {
+                window.grecaptcha.reset(widgetId);
+             }
+           });
+        }
     }
   };
 
@@ -357,3 +364,4 @@ declare global {
   }
 }
 
+    

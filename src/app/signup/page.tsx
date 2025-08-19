@@ -72,12 +72,18 @@ function SignupContent() {
       toast({ title: "OTP Sent!", description: `An OTP has been sent to ${formattedPhoneNumber}`});
     } catch (error: any) {
         console.error("Error sending OTP:", error);
-        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: error.message });
-        // Reset reCAPTCHA
-        window.grecaptcha?.reset(window.recaptchaWidgetId);
-        window.recaptchaVerifier.render().then((widgetId) => {
-            window.recaptchaWidgetId = widgetId;
-        });
+        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: `Error: ${error.code}. Check the console for more details.` });
+        
+        // This is a potential workaround for reCAPTCHA issues.
+        // It tries to reset the reCAPTCHA widget if it exists.
+        if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
+           appVerifier.render().then((widgetId: any) => {
+             if (widgetId) {
+                window.recaptchaWidgetId = widgetId;
+                window.grecaptcha.reset(window.recaptchaWidgetId);
+             }
+           });
+        }
     }
   };
 
@@ -293,3 +299,5 @@ export default function UserSignupPage() {
     </Suspense>
   );
 }
+
+    
