@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign } from 'lucide-react';
+import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus, OrderItem } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderItemStatus, markOrderAsPaid } from '@/app/vendor/actions';
@@ -88,6 +88,12 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
             <div>
                  <CardTitle className="text-xl">Order #{order.display_id.split('-').pop()}</CardTitle>
                  <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
+                 {order.contact_phone && (
+                    <CardDescription className="flex items-center gap-1.5 mt-1">
+                        <Phone className="h-3 w-3" />
+                        {order.contact_phone}
+                    </CardDescription>
+                 )}
             </div>
             <div className="text-right space-y-1">
                 <Badge variant={isPaid ? "default" : "secondary"} className={cn(isPaid ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
@@ -371,3 +377,5 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
+
+    
