@@ -286,14 +286,7 @@ export default function CheckoutPage() {
               <CardTitle className="font-headline">Payment Method</CardTitle>
             </CardHeader>
             <CardContent>
-              <RadioGroup name="payment" defaultValue="upi" className="space-y-2">
-                <Label
-                  htmlFor="upi"
-                  className="flex cursor-pointer items-center gap-4 rounded-md border p-4 hover:bg-accent/50 has-[input:checked]:border-primary"
-                >
-                  <RadioGroupItem value="upi" id="upi" />
-                  <span className="font-semibold">UPI / QR Code</span>
-                </Label>
+              <RadioGroup name="payment" defaultValue="cod" className="space-y-2">
                 <Label
                   htmlFor="cod"
                   className="flex cursor-pointer items-center gap-4 rounded-md border p-4 hover:bg-accent/50 has-[input:checked]:border-primary"
