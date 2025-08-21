@@ -264,42 +264,78 @@ function OrdersDisplay() {
   }, [stallId, supabase, fetchOrders, toast, audio, session]);
 
   const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
-      if(!stallId) return;
-      startTransition(async () => {
-          try {
-            await updateOrderItemStatus(orderId, stallId, newStatus);
-            // Re-fetch orders to get the latest state for all items
-            fetchOrders(stallId);
-          } catch (error) {
-              toast({
-                  variant: "destructive",
-                  title: "Update Failed",
-                  description: "Could not update the order status. Please try again.",
-              })
-              console.error('Failed to update order status:', error);
-          }
-      });
-  };
-  
-  const handleMarkAsPaid = async (orderId: string) => {
+    if (!stallId) return;
+
+    // Optimistically update UI
+    setOrders(prevOrders => prevOrders.map(order => {
+      if (order.id === orderId) {
+        return {
+          ...order,
+          order_items: order.order_items.map(item => ({
+            ...item,
+            status: newStatus,
+          })),
+          // Also optimistically update master status if possible, though server will re-calculate
+          status: newStatus,
+        };
+      }
+      return order;
+    }));
+
     startTransition(async () => {
-         try {
-            await markOrderAsPaid(orderId);
-            if (stallId) {
-                // Also update this vendor's items to 'completed'
-                await updateOrderItemStatus(orderId, stallId, 'completed');
-                fetchOrders(stallId);
-            }
-         } catch(error) {
-            toast({
-              variant: "destructive",
-              title: "Update Failed",
-              description: "Could not mark order as paid.",
-            });
-            console.error('Failed to mark order as paid:', error);
-         }
+      try {
+        await updateOrderItemStatus(orderId, stallId, newStatus);
+        // No need to re-fetch, revalidatePath in server action handles consistency
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Update Failed",
+          description: "Could not update the order status. Please try again.",
+        });
+        console.error('Failed to update order status:', error);
+        // Revert UI on error
+        fetchOrders(stallId); // Re-fetch to get actual state
+      }
     });
-  }
+  };
+
+  const handleMarkAsPaid = (orderId: string) => {
+    if (!stallId) return;
+
+    // Optimistically update UI
+    setOrders(prevOrders => prevOrders.map(order => {
+      if (order.id === orderId) {
+        return {
+          ...order,
+          payment_status: 'completed',
+          order_items: order.order_items.map(item => ({
+            ...item,
+            status: 'completed', // Mark vendor's items as completed
+          })),
+          status: 'completed', // Optimistically update master status
+        };
+      }
+      return order;
+    }));
+
+    startTransition(async () => {
+      try {
+        await markOrderAsPaid(orderId);
+        if (stallId) {
+          await updateOrderItemStatus(orderId, stallId, 'completed');
+        }
+        // No need to re-fetch, revalidatePath in server action handles consistency
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Update Failed",
+          description: "Could not mark order as paid.",
+        });
+        console.error('Failed to mark order as paid:', error);
+        fetchOrders(stallId); // Revert UI on error
+      }
+    });
+  };
   
   if (isLoading || !stallId) {
     return <OrdersPageSkeleton />;
@@ -377,5 +413,3 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
-
-    
