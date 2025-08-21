@@ -17,10 +17,7 @@ import { createOrder } from '../orders/actions';
 import { Loader2, CreditCard, ShieldCheck, Phone } from 'lucide-react';
 import type { PaymentMethod } from '@/lib/types';
 import { auth } from '@/lib/firebase/client';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-
-type PhoneAuthState = 'idle' | 'otpSent' | 'verified' | 'verifying' | 'error';
-
+import { signInWithPhoneNumber } from 'firebase/auth';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -31,12 +28,6 @@ export default function CheckoutPage() {
   const [isPending, startTransition] = useTransition();
   
   const [showConfetti, setShowConfetti] = useState(false);
-  
-  // Phone Auth State
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [phoneAuthState, setPhoneAuthState] = useState<PhoneAuthState>('idle');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   useEffect(() => {
     if (isSuccess) {
@@ -52,89 +43,13 @@ export default function CheckoutPage() {
     }
   }, [cartItems, isSuccess, router]);
   
-  const configureRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-          console.log("reCAPTCHA verified");
-        },
-        'expired-callback': () => {
-           toast({
-            variant: "destructive",
-            title: "reCAPTCHA Expired",
-            description: "Please try sending the OTP again.",
-           })
-        }
-      });
-    }
-  }
-  
-  const handleSendOtp = async () => {
-    if (phoneNumber.length !== 10) {
-      toast({ variant: 'destructive', title: 'Invalid Phone Number', description: 'Please enter a valid 10-digit phone number.'});
-      return;
-    }
-    
-    configureRecaptcha();
-    const appVerifier = window.recaptchaVerifier;
-    const formattedPhoneNumber = `+91${phoneNumber}`;
-
-    try {
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
-      setConfirmationResult(confirmation);
-      setPhoneAuthState('otpSent');
-      toast({ title: "OTP Sent!", description: `An OTP has been sent to ${formattedPhoneNumber}`});
-    } catch (error: any) {
-        console.error("Error sending OTP:", error);
-        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: `Error: ${error.code}. Check the console for more details.` });
-        
-        // This is a potential workaround for reCAPTCHA issues.
-        // It tries to reset the reCAPTCHA widget if it exists.
-        if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
-           appVerifier.render().then((widgetId: any) => {
-             if (widgetId) {
-                window.grecaptcha.reset(widgetId);
-             }
-           });
-        }
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-     if (otp.length !== 6) {
-      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'Please enter the 6-digit OTP.'});
-      return;
-    }
-    if (!confirmationResult) {
-      toast({ variant: 'destructive', title: 'Verification Error', description: 'Please send an OTP first.'});
-      return;
-    }
-    setPhoneAuthState('verifying');
-    try {
-        await confirmationResult.confirm(otp);
-        setPhoneAuthState('verified');
-        toast({ title: 'Phone Number Verified!', description: 'You can now proceed to place your order.'});
-    } catch(error: any) {
-        console.error("Error verifying OTP:", error);
-        toast({ variant: 'destructive', title: 'OTP Verification Failed', description: error.message});
-        setPhoneAuthState('otpSent'); // Go back to OTP entry
-    }
-  }
-
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    
-    if (phoneAuthState !== 'verified') {
-        toast({ variant: "destructive", title: "Phone number not verified", description: "Please verify your phone number before placing an order."});
-        return;
-    }
     
     const formData = new FormData(event.currentTarget);
     const paymentMethod = formData.get('payment') as PaymentMethod;
     const contactName = formData.get('name') as string;
+    const contactPhone = formData.get('phone') as string; // Assuming phone number is directly entered and not verified
     
     if (paymentMethod === 'upi') {
         setIsProcessingPayment(true);
@@ -159,7 +74,7 @@ export default function CheckoutPage() {
             cartTotal,
             tableId,
             contactName,
-            contactPhone: `+91${phoneNumber}`,
+            contactPhone: `+91${contactPhone}`, // Use the directly entered phone number
         });
         
         setIsProcessingPayment(false);
@@ -217,10 +132,9 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6">
-      <div id="recaptcha-container"></div>
       <h1 className="mb-8 font-headline text-4xl font-bold">Checkout</h1>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
-        <fieldset disabled={isPending || phoneAuthState === 'verifying'} className="space-y-6">
+        <fieldset disabled={isPending} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Contact Information</CardTitle>
@@ -240,45 +154,10 @@ export default function CheckoutPage() {
                        type="tel" 
                        placeholder="9876543210" 
                        required 
-                       value={phoneNumber}
-                       onChange={(e) => setPhoneNumber(e.target.value)}
-                       disabled={phoneAuthState !== 'idle'}
                        maxLength={10}
                      />
-                     {phoneAuthState === 'idle' && (
-                        <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
-                     )}
-                     {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
-                       <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending || phoneAuthState === 'verifying'}>Resend</Button>
-                     )}
                    </div>
               </div>
-              {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
-                <div className="space-y-2">
-                    <Label htmlFor="otp">Enter OTP</Label>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            id="otp" 
-                            name="otp" 
-                            type="text" 
-                            placeholder="6-digit code" 
-                            required
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            maxLength={6}
-                         />
-                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
-                            {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : 'Verify'}
-                        </Button>
-                    </div>
-                </div>
-              )}
-              {phoneAuthState === 'verified' && (
-                  <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">
-                    <ShieldCheck className="h-5 w-5" />
-                    <p className="font-medium text-sm">Phone number verified successfully!</p>
-                  </div>
-              )}
             </CardContent>
           </Card>
           <Card>
@@ -337,7 +216,7 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending || phoneAuthState !== 'verified'}>
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isPending ? 'Placing Order...' : 'Place Order'}
             </Button>
@@ -347,13 +226,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-// Add this to your global types or a relevant file
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-    grecaptcha: any;
-  }
-}
-
-    
