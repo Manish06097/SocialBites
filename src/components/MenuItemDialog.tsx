@@ -55,39 +55,51 @@ export function MenuItemDialog({ item, stall, open, onOpenChange }: MenuItemDial
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="sm:max-w-md p-0"
+        className="sm:max-w-md p-0 flex flex-col h-full max-h-[90vh]"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="font-headline text-2xl">{item.name}</DialogTitle>
+        <DialogHeader className="p-6 pb-4">
+          <div className="flex items-start gap-4">
+             <Image 
+                src={item.imageUrl} 
+                alt={item.name} 
+                width={80} 
+                height={80} 
+                className="rounded-lg object-cover aspect-square bg-muted" 
+                data-ai-hint="food item" 
+              />
+            <div className="flex-grow">
+                <DialogTitle className="font-headline text-2xl leading-tight">{item.name}</DialogTitle>
+                <p className="text-muted-foreground text-sm mt-1">{item.description}</p>
+            </div>
+          </div>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="flex-grow">
           <div className="space-y-4 px-6 pb-6">
-            <Image src={item.imageUrl} alt={item.name} width={400} height={200} className="rounded-lg object-cover" data-ai-hint="food item" />
-            <p className="text-muted-foreground">{item.description}</p>
             
             {item.customizations && item.customizations.length > 0 && (
               <>
+                <Separator />
                 {item.customizations.map((custom, index) => (
-                  <div key={index} className="space-y-2">
-                    <Label className="font-semibold">{custom.title}</Label>
+                  <div key={index} className="space-y-3">
+                    <Label className="font-semibold text-base">{custom.title}</Label>
                     {custom.type === 'radio' && custom.options && (
-                      <RadioGroup onValueChange={(value) => handleRadioChange(custom.title, value)}>
+                      <RadioGroup onValueChange={(value) => handleRadioChange(custom.title, value)} className="space-y-2">
                         {custom.options.map((opt, i) => (
-                          <div key={i} className="flex items-center space-x-2">
+                          <Label htmlFor={`${custom.title}-${i}`} key={i} className="flex items-center gap-3 p-3 rounded-md border has-[:checked]:border-primary has-[:checked]:bg-primary/5 cursor-pointer">
                             <RadioGroupItem value={opt.label} id={`${custom.title}-${i}`} />
-                            <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
-                          </div>
+                            <span>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</span>
+                          </Label>
                         ))}
                       </RadioGroup>
                     )}
                     {custom.type === 'checkbox' && custom.options && (
-                       <div>
+                       <div className="space-y-2">
                         {custom.options.map((opt, i) => (
-                           <div key={i} className="flex items-center space-x-2 my-2">
+                           <Label htmlFor={`${custom.title}-${i}`} key={i} className="flex items-center gap-3 p-3 rounded-md border has-[:checked]:border-primary has-[:checked]:bg-primary/5 cursor-pointer">
                              <Checkbox id={`${custom.title}-${i}`} onCheckedChange={(checked) => handleCheckboxChange(custom.title, opt.label, !!checked)} />
-                             <Label htmlFor={`${custom.title}-${i}`}>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</Label>
-                           </div>
+                             <span>{opt.label} {opt.price_modifier > 0 && `(+₹${opt.price_modifier})`}</span>
+                           </Label>
                          ))}
                        </div>
                     )}
@@ -98,24 +110,23 @@ export function MenuItemDialog({ item, stall, open, onOpenChange }: MenuItemDial
             )}
             
             <div className="space-y-2">
-              <Label className="font-semibold">Special Instructions</Label>
+              <Label className="font-semibold text-base">Special Instructions</Label>
               <Textarea placeholder="e.g. extra spicy, no onions..." value={specialInstructions} onChange={(e) => setSpecialInstructions(e.target.value)} />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label className="font-semibold">Quantity</Label>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                <Input type="number" value={quantity} readOnly className="h-8 w-12 text-center" />
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(quantity + 1)}>+</Button>
-              </div>
-            </div>
           </div>
         </ScrollArea>
-        <DialogFooter className="p-6 pt-0 border-t">
-          <Button type="submit" size="lg" className="w-full font-bold mt-6" onClick={handleAddToCart}>
-            Add {quantity} to cart
-          </Button>
+        <DialogFooter className="p-4 border-t bg-background mt-auto">
+          <div className="flex items-center justify-between w-full gap-4">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                <span className="font-bold text-lg w-8 text-center">{quantity}</span>
+                <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(quantity + 1)}>+</Button>
+              </div>
+              <Button type="submit" size="lg" className="w-full font-bold" onClick={handleAddToCart}>
+                Add to cart
+              </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
