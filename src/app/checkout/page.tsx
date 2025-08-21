@@ -14,13 +14,15 @@ import { useToast } from '@/hooks/use-toast';
 import Confetti from 'react-dom-confetti';
 import { useState, useEffect, useTransition } from 'react';
 import { createOrder } from '../orders/actions';
-import { Loader2, CreditCard, ShieldCheck, Phone } from 'lucide-react';
+import { Loader2, CreditCard, ShieldCheck, Phone, User as UserIcon } from 'lucide-react';
 import type { PaymentMethod } from '@/lib/types';
 import { auth } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type PhoneAuthState = 'idle' | 'otpSent' | 'verified' | 'verifying' | 'error';
-
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -29,9 +31,13 @@ export default function CheckoutPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isPending, startTransition] = useTransition();
-  
   const [showConfetti, setShowConfetti] = useState(false);
   
+  // User Profile State
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; phone: string; } | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
   // Phone Auth State
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -45,27 +51,51 @@ export default function CheckoutPage() {
     }
   }, [isSuccess]);
 
-
   useEffect(() => {
     if (cartItems.length === 0 && !isSuccess) {
       router.replace('/');
     }
   }, [cartItems, isSuccess, router]);
   
+  // Fetch user profile
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    const fetchUserAndProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user && !user.is_anonymous) {
+        const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', user.id)
+            .single();
+
+        if (error) {
+            console.error('Error fetching profile:', error);
+            toast({ variant: 'destructive', title: 'Could not load profile.'});
+        } else {
+            setProfile(profileData);
+            setPhoneAuthState('verified'); // Logged-in users have verified numbers
+        }
+      }
+      setLoadingProfile(false);
+    };
+
+    fetchUserAndProfile();
+  }, [toast]);
+  
+  // Invisible reCAPTCHA setup
   const configureRecaptcha = () => {
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-          console.log("reCAPTCHA verified");
-        },
+        'callback': (response: any) => console.log("reCAPTCHA verified"),
         'expired-callback': () => {
            toast({
             variant: "destructive",
             title: "reCAPTCHA Expired",
             description: "Please try sending the OTP again.",
-           })
+           });
         }
       });
     }
@@ -89,14 +119,9 @@ export default function CheckoutPage() {
     } catch (error: any) {
         console.error("Error sending OTP:", error);
         toast({ variant: 'destructive', title: 'Failed to Send OTP', description: `Error: ${error.code}. Check the console for more details.` });
-        
-        // This is a potential workaround for reCAPTCHA issues.
-        // It tries to reset the reCAPTCHA widget if it exists.
         if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
            appVerifier.render().then((widgetId: any) => {
-             if (widgetId) {
-                window.grecaptcha.reset(widgetId);
-             }
+             if (widgetId) window.grecaptcha.reset(widgetId);
            });
         }
     }
@@ -115,29 +140,39 @@ export default function CheckoutPage() {
     try {
         await confirmationResult.confirm(otp);
         setPhoneAuthState('verified');
-        toast({ title: 'Phone Number Verified!', description: 'You can now proceed to place your order.'});
+        toast({ title: 'Phone Number Verified!', description: 'You can now proceed.'});
     } catch(error: any) {
         console.error("Error verifying OTP:", error);
         toast({ variant: 'destructive', title: 'OTP Verification Failed', description: error.message});
-        setPhoneAuthState('otpSent'); // Go back to OTP entry
+        setPhoneAuthState('otpSent');
     }
-  }
-
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     
+    const formData = new FormData(event.currentTarget);
+    const paymentMethod = formData.get('payment') as PaymentMethod;
+    
+    let contactName: string | undefined;
+    let contactPhone: string | undefined;
+
+    if (user && !user.is_anonymous && profile) {
+        contactName = profile.full_name;
+        contactPhone = profile.phone;
+    } else {
+        contactName = formData.get('name') as string;
+        contactPhone = `+91${phoneNumber}`;
+    }
+    
     if (phoneAuthState !== 'verified') {
-        toast({ variant: "destructive", title: "Phone number not verified", description: "Please verify your phone number before placing an order."});
+        toast({ variant: "destructive", title: "Phone number not verified", description: "Please verify your phone number to place the order." });
         return;
     }
     
-    const formData = new FormData(event.currentTarget);
-    const paymentMethod = formData.get('payment') as PaymentMethod;
-    const contactName = formData.get('name') as string;
-    
-    if (paymentMethod === 'upi') {
-        setIsProcessingPayment(true);
+    if (!contactName || !contactPhone) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Contact details are required."});
+        return;
     }
 
     startTransition(async () => {
@@ -159,7 +194,7 @@ export default function CheckoutPage() {
             cartTotal,
             tableId,
             contactName,
-            contactPhone: `+91${phoneNumber}`,
+            contactPhone,
         });
         
         setIsProcessingPayment(false);
@@ -190,17 +225,8 @@ export default function CheckoutPage() {
     height: "10px",
     colors: ["#FF6B00", "#00A7E1", "#FFFFFF", "#FFC107"]
   };
-
-  if (isProcessingPayment) {
-     return (
-        <div className="container mx-auto flex h-[70vh] flex-col items-center justify-center text-center">
-             <CreditCard className="h-16 w-16 text-primary animate-pulse" />
-             <h1 className="font-headline text-3xl font-extrabold text-primary mt-4">Processing Payment...</h1>
-             <p className="mt-2 text-muted-foreground">Please wait while we securely process your transaction.</p>
-             <p className="mt-1 text-muted-foreground text-sm">Do not close or refresh this page.</p>
-        </div>
-     )
-  }
+  
+  const isGuest = !user || user.is_anonymous;
 
   if (isSuccess) {
     return (
@@ -220,64 +246,97 @@ export default function CheckoutPage() {
       <div id="recaptcha-container"></div>
       <h1 className="mb-8 font-headline text-4xl font-bold">Checkout</h1>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
-        <fieldset disabled={isPending || phoneAuthState === 'verifying'} className="space-y-6">
+        <fieldset disabled={isPending || isProcessingPayment} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Contact Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" name="name" placeholder="John Doe" required />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="phone">Contact Number</Label>
-                   <div className="flex items-center gap-2">
-                     <span className="flex h-10 items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">+91</span>
-                     <Input 
-                       id="phone" 
-                       name="phone" 
-                       type="tel" 
-                       placeholder="9876543210" 
-                       required 
-                       value={phoneNumber}
-                       onChange={(e) => setPhoneNumber(e.target.value)}
-                       disabled={phoneAuthState !== 'idle'}
-                       maxLength={10}
-                     />
-                     {phoneAuthState === 'idle' && (
-                        <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
-                     )}
-                     {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
-                       <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending || phoneAuthState === 'verifying'}>Resend</Button>
-                     )}
-                   </div>
-              </div>
-              {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
-                <div className="space-y-2">
-                    <Label htmlFor="otp">Enter OTP</Label>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            id="otp" 
-                            name="otp" 
-                            type="text" 
-                            placeholder="6-digit code" 
-                            required
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            maxLength={6}
-                         />
-                        <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
-                            {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : 'Verify'}
-                        </Button>
-                    </div>
+              {loadingProfile ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-              )}
-              {phoneAuthState === 'verified' && (
-                  <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">
-                    <ShieldCheck className="h-5 w-5" />
-                    <p className="font-medium text-sm">Phone number verified successfully!</p>
+              ) : isGuest ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" name="name" placeholder="John Doe" required />
                   </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="phone">Contact Number</Label>
+                       <div className="flex items-center gap-2">
+                         <span className="flex h-10 items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">+91</span>
+                         <Input 
+                           id="phone" 
+                           name="phone" 
+                           type="tel" 
+                           placeholder="9876543210" 
+                           required 
+                           value={phoneNumber}
+                           onChange={(e) => setPhoneNumber(e.target.value)}
+                           disabled={phoneAuthState !== 'idle'}
+                           maxLength={10}
+                         />
+                         {phoneAuthState === 'idle' && (
+                             <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
+                          )}
+                          {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
+                             <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending || phoneAuthState === 'verifying'}>Resend</Button>
+                          )}
+                       </div>
+                  </div>
+                   {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
+                    <div className="space-y-2">
+                        <Label htmlFor="otp">Enter OTP</Label>
+                        <div className="flex items-center gap-2">
+                            <Input 
+                                id="otp" 
+                                name="otp" 
+                                type="text" 
+                                placeholder="6-digit code" 
+                                required
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                maxLength={6}
+                                disabled={phoneAuthState === 'verifying'}
+                             />
+                            <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
+                               {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Verify'}
+                            </Button>
+                        </div>
+                    </div>
+                  )}
+                  {phoneAuthState === 'verified' && (
+                      <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">
+                        <ShieldCheck className="h-5 w-5" />
+                        <p className="font-medium text-sm">Phone number verified successfully!</p>
+                      </div>
+                  )}
+                </>
+              ) : profile ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 rounded-md border p-3">
+                        <UserIcon className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                            <p className="text-xs text-muted-foreground">Name</p>
+                            <p className="font-semibold">{profile.full_name}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-md border p-3">
+                        <Phone className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="font-semibold">{profile.phone}</p>
+                        </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground">Could not load your profile information.</p>
               )}
             </CardContent>
           </Card>
@@ -337,7 +396,7 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending || phoneAuthState !== 'verified'}>
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending || (isGuest && phoneAuthState !== 'verified')}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isPending ? 'Placing Order...' : 'Place Order'}
             </Button>
@@ -348,11 +407,13 @@ export default function CheckoutPage() {
   );
 }
 
-// Add this to your global types or a relevant file
+// Add this to a global declaration file if it's not already there
+// to avoid TypeScript errors on the window object.
 declare global {
   interface Window {
     recaptchaVerifier: RecaptchaVerifier;
     grecaptcha: any;
+    recaptchaWidgetId?: any;
   }
 }
 

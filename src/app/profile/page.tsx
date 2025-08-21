@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronRight, LogOut, Package, User as UserIcon, HelpCircle } from 'lucide-react';
+import { ChevronRight, LogOut, Package, User as UserIcon, HelpCircle, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -20,6 +20,7 @@ interface TableInfo {
 
 interface Profile {
     full_name: string;
+    phone?: string;
 }
 
 function ProfilePageSkeleton() {
@@ -66,7 +67,7 @@ function ProfilePageContent() {
             if (!user.is_anonymous) {
                 const { data: profileData, error } = await supabase
                     .from('profiles')
-                    .select('full_name')
+                    .select('full_name, phone')
                     .eq('id', user.id)
                     .single();
 
@@ -122,7 +123,7 @@ function ProfilePageContent() {
           <p className="text-muted-foreground">
             {isGuest 
                 ? (tableInfo ? `Currently at Table ${tableInfo.tableId}` : 'Welcome!')
-                : user?.email
+                : (profile?.phone || user?.email)
             }
           </p>
         </div>
