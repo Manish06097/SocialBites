@@ -52,7 +52,7 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
+const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, currentVendorOrderStatus }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean, currentVendorOrderStatus: OrderStatus }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
   
@@ -76,10 +76,6 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
     }, 60000);
     return () => clearInterval(interval);
   }, [order.created_at]);
-
-  // The status for THIS vendor is the status of the first item belonging to them.
-  // This is a safe assumption because a vendor updates all their items at once.
-  const vendorOrderStatus = order.order_items[0]?.status;
 
   const isPaid = order.payment_status === 'completed';
   const isCod = order.payment_method === 'cod';
@@ -136,7 +132,7 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
       </CardContent>
       <Separator />
       <CardFooter className="py-3 px-4">
-        {vendorOrderStatus === 'pending' && (
+        {currentVendorOrderStatus === 'pending' && (
             <div className="w-full flex gap-2">
                 <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')} disabled={isUpdating}>
                     <XCircle className="mr-2 h-4 w-4" />
@@ -148,19 +144,19 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
                 </Button>
             </div>
         )}
-        {vendorOrderStatus === 'accepted' && (
+        {currentVendorOrderStatus === 'accepted' && (
             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isUpdating}>
                 <ChefHat className="mr-2 h-4 w-4" />
                 Mark as Preparing
             </Button>
         )}
-        {vendorOrderStatus === 'preparing' && (
+        {currentVendorOrderStatus === 'preparing' && (
              <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isUpdating}>
                 <PackageCheck className="mr-2 h-4 w-4" />
                 Mark as Delivered
             </Button>
         )}
-        {vendorOrderStatus === 'delivered' && (
+        {currentVendorOrderStatus === 'delivered' && (
             isCod && !isPaid ? (
                 <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
                     <DollarSign className="mr-2 h-4 w-4" />
@@ -173,13 +169,13 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
                 </p>
             )
         )}
-        {vendorOrderStatus === 'completed' && (
+        {currentVendorOrderStatus === 'completed' && (
             <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Order Completed
             </p>
         )}
-        {vendorOrderStatus === 'rejected' && (
+        {currentVendorOrderStatus === 'rejected' && (
             <p className="text-sm text-red-600 font-medium flex items-center w-full justify-center">
                 <XCircle className="mr-2 h-4 w-4" />
                 Order Rejected
@@ -378,17 +374,17 @@ function OrdersDisplay() {
         </TabsList>
         <TabsContent value="pending" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
+             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="preparing" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
           </div>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
+             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
