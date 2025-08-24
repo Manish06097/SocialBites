@@ -16,13 +16,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { createOrder } from '../orders/actions';
 import { Loader2, CreditCard, ShieldCheck, Phone, User as UserIcon } from 'lucide-react';
 import type { PaymentMethod } from '@/lib/types';
-import { auth } from '@/lib/firebase/client';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import { Skeleton } from '@/components/ui/skeleton';
-
-type PhoneAuthState = 'idle' | 'otpSent' | 'verified' | 'verifying' | 'error';
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -37,13 +33,8 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ full_name: string; phone: string; } | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [guestPhoneNumber, setGuestPhoneNumber] = useState('');
 
-  // Phone Auth State
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [phoneAuthState, setPhoneAuthState] = useState<PhoneAuthState>('idle');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  
   useEffect(() => {
     if (isSuccess) {
       const timer = setTimeout(() => setShowConfetti(true), 100);
@@ -75,7 +66,6 @@ export default function CheckoutPage() {
             toast({ variant: 'destructive', title: 'Could not load profile.'});
         } else {
             setProfile(profileData);
-            setPhoneAuthState('verified'); // Logged-in users have verified numbers
         }
       }
       setLoadingProfile(false);
@@ -84,70 +74,6 @@ export default function CheckoutPage() {
     fetchUserAndProfile();
   }, [toast]);
   
-  // Invisible reCAPTCHA setup
-  const configureRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => console.log("reCAPTCHA verified"),
-        'expired-callback': () => {
-           toast({
-            variant: "destructive",
-            title: "reCAPTCHA Expired",
-            description: "Please try sending the OTP again.",
-           });
-        }
-      });
-    }
-  }
-  
-  const handleSendOtp = async () => {
-    if (phoneNumber.length !== 10) {
-      toast({ variant: 'destructive', title: 'Invalid Phone Number', description: 'Please enter a valid 10-digit phone number.'});
-      return;
-    }
-    
-    configureRecaptcha();
-    const appVerifier = window.recaptchaVerifier;
-    const formattedPhoneNumber = `+91${phoneNumber}`;
-
-    try {
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
-      setConfirmationResult(confirmation);
-      setPhoneAuthState('otpSent');
-      toast({ title: "OTP Sent!", description: `An OTP has been sent to ${formattedPhoneNumber}`});
-    } catch (error: any) {
-        console.error("Error sending OTP:", error);
-        toast({ variant: 'destructive', title: 'Failed to Send OTP', description: `Error: ${error.code}. Check the console for more details.` });
-        if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
-           appVerifier.render().then((widgetId: any) => {
-             if (widgetId) window.grecaptcha.reset(widgetId);
-           });
-        }
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-     if (otp.length !== 6) {
-      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'Please enter the 6-digit OTP.'});
-      return;
-    }
-    if (!confirmationResult) {
-      toast({ variant: 'destructive', title: 'Verification Error', description: 'Please send an OTP first.'});
-      return;
-    }
-    setPhoneAuthState('verifying');
-    try {
-        await confirmationResult.confirm(otp);
-        setPhoneAuthState('verified');
-        toast({ title: 'Phone Number Verified!', description: 'You can now proceed.'});
-    } catch(error: any) {
-        console.error("Error verifying OTP:", error);
-        toast({ variant: 'destructive', title: 'OTP Verification Failed', description: error.message});
-        setPhoneAuthState('otpSent');
-    }
-  };
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     
@@ -162,16 +88,11 @@ export default function CheckoutPage() {
         contactPhone = profile.phone;
     } else {
         contactName = formData.get('name') as string;
-        contactPhone = `+91${phoneNumber}`;
+        contactPhone = `+91${guestPhoneNumber}`;
     }
     
-    if (phoneAuthState !== 'verified') {
-        toast({ variant: "destructive", title: "Phone number not verified", description: "Please verify your phone number to place the order." });
-        return;
-    }
-    
-    if (!contactName || !contactPhone) {
-        toast({ variant: "destructive", title: "Missing Information", description: "Contact details are required."});
+    if (!contactName || !contactPhone || (isGuest && guestPhoneNumber.length !== 10)) {
+        toast({ variant: "destructive", title: "Missing Information", description: "Please fill in all required contact details."});
         return;
     }
 
@@ -243,7 +164,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6">
-      <div id="recaptcha-container"></div>
       <h1 className="mb-8 font-headline text-4xl font-bold">Checkout</h1>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
         <fieldset disabled={isPending || isProcessingPayment} className="space-y-6">
@@ -275,46 +195,12 @@ export default function CheckoutPage() {
                            type="tel" 
                            placeholder="9876543210" 
                            required 
-                           value={phoneNumber}
-                           onChange={(e) => setPhoneNumber(e.target.value)}
-                           disabled={phoneAuthState !== 'idle'}
+                           value={guestPhoneNumber}
+                           onChange={(e) => setGuestPhoneNumber(e.target.value)}
                            maxLength={10}
                          />
-                         {phoneAuthState === 'idle' && (
-                             <Button type="button" onClick={handleSendOtp} disabled={phoneNumber.length !== 10}>Send OTP</Button>
-                          )}
-                          {(phoneAuthState === 'otpSent' || phoneAuthState === 'verified') && (
-                             <Button type="button" variant="outline" onClick={handleSendOtp} disabled={isPending || phoneAuthState === 'verifying'}>Resend</Button>
-                          )}
                        </div>
                   </div>
-                   {(phoneAuthState === 'otpSent' || phoneAuthState === 'verifying') && (
-                    <div className="space-y-2">
-                        <Label htmlFor="otp">Enter OTP</Label>
-                        <div className="flex items-center gap-2">
-                            <Input 
-                                id="otp" 
-                                name="otp" 
-                                type="text" 
-                                placeholder="6-digit code" 
-                                required
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                                maxLength={6}
-                                disabled={phoneAuthState === 'verifying'}
-                             />
-                            <Button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || phoneAuthState === 'verifying'}>
-                               {phoneAuthState === 'verifying' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Verify'}
-                            </Button>
-                        </div>
-                    </div>
-                  )}
-                  {phoneAuthState === 'verified' && (
-                      <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-green-700">
-                        <ShieldCheck className="h-5 w-5" />
-                        <p className="font-medium text-sm">Phone number verified successfully!</p>
-                      </div>
-                  )}
                 </>
               ) : profile ? (
                 <>
@@ -396,7 +282,7 @@ export default function CheckoutPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending || (isGuest && phoneAuthState !== 'verified')}>
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isPending ? 'Placing Order...' : 'Place Order'}
             </Button>
@@ -406,15 +292,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-// Add this to a global declaration file if it's not already there
-// to avoid TypeScript errors on the window object.
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-    grecaptcha: any;
-    recaptchaWidgetId?: any;
-  }
-}
-
-    
