@@ -35,11 +35,10 @@ export async function createOrder(payload: CreateOrderPayload) {
     const randomPart = Math.random().toString(36).substring(2, 7);
     const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
 
-    // For vendor-placed orders, we can assume payment is handled offline (COD)
-    // and mark it as 'completed' immediately if it's a COD order.
-    // Otherwise, we follow the standard flow.
+    // For vendor-placed orders, we set payment to pending as it's a COD order.
+    // Otherwise, we follow the standard flow for customer orders.
     const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
-        ? 'completed'
+        ? 'pending'
         : 'pending';
     
     // Vendor orders start as 'accepted' since the vendor is inputting them.
