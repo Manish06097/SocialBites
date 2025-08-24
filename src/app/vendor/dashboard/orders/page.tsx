@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign, Phone } from 'lucide-react';
+import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign, Phone, Home } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus, OrderItem } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderItemStatus, markOrderAsPaid } from '@/app/vendor/actions';
@@ -55,6 +55,9 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
 const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
+  
+  // This will get the stall name from the first item, which is safe since all items belong to the same stall for this vendor.
+  const stallName = order.order_items[0]?.stalls?.name || 'Your Stall';
 
   useEffect(() => {
     setIsClient(true);
@@ -88,12 +91,18 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
             <div>
                  <CardTitle className="text-xl">Order #{order.display_id.split('-').pop()}</CardTitle>
                  <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
-                 {order.contact_phone && (
-                    <CardDescription className="flex items-center gap-1.5 mt-1">
-                        <Phone className="h-3 w-3" />
-                        {order.contact_phone}
+                 <div className="flex items-center gap-2 mt-1">
+                    {order.contact_phone && (
+                        <CardDescription className="flex items-center gap-1.5">
+                            <Phone className="h-3 w-3" />
+                            {order.contact_phone}
+                        </CardDescription>
+                    )}
+                     <CardDescription className="flex items-center gap-1.5">
+                        <Home className="h-3 w-3" />
+                        {stallName}
                     </CardDescription>
-                 )}
+                 </div>
             </div>
             <div className="text-right space-y-1">
                 <Badge variant={isPaid ? "default" : "secondary"} className={cn(isPaid ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
