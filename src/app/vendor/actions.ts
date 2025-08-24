@@ -3,7 +3,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Order, OrderStatus, OrderItem } from '@/lib/types';
+import { Order, OrderStatus, OrderItem, Stall, MenuCategory, MenuItem } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
 export async function signOut() {
@@ -33,6 +33,62 @@ export async function getVendorStallId(): Promise<string | null> {
   }
 
   return data?.id || null;
+}
+
+export async function getStallWithMenuItems(stallId: string): Promise<Stall | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: stallData, error: stallError } = await supabase
+    .from('stalls')
+    .select(`*`)
+    .eq('id', stallId)
+    .maybeSingle();
+
+  if (stallError || !stallData) {
+    console.error('Error fetching stall:', stallError);
+    return null;
+  }
+
+  const { data: menuItemsData, error: menuItemsError } = await supabase
+    .from('menu_items')
+    .select(`*`)
+    .eq('stall_id', stallId)
+    .order('category, name');
+
+  if (menuItemsError) {
+    console.error('Error fetching menu items:', menuItemsError);
+    return { ...stallData, menu: [] } as Stall;
+  }
+
+  const menuCategories: { [key: string]: MenuItem[] } = {};
+  (menuItemsData || []).forEach((item: any) => {
+    const menuItem: MenuItem = {
+      id: item.id,
+      stall_id: item.stall_id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      imageUrl: item.image_url,
+      available: item.available,
+      customizations: item.customizations,
+      rating: item.rating,
+      orders: item.orders_count,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    };
+    const categoryTitle = item.category || 'Uncategorized';
+    if (!menuCategories[categoryTitle]) {
+      menuCategories[categoryTitle] = [];
+    }
+    menuCategories[categoryTitle].push(menuItem);
+  });
+
+  const menu: MenuCategory[] = Object.keys(menuCategories).map(title => ({
+    title,
+    items: menuCategories[title],
+  }));
+
+  return { ...stallData, menu } as Stall;
 }
 
 export async function getVendorOrders(stallId: string): Promise<Order[]> {

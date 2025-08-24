@@ -10,6 +10,58 @@ import type { Order, OrderItem, OrderStatus } from '@/lib/types';
 import { Separator } from './ui/separator';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { Check, ChefHat, PackageCheck, List } from 'lucide-react';
+
+
+const OrderStatusTimeline = ({ status }: { status: OrderStatus }) => {
+    const statuses: OrderStatus[] = ['pending', 'accepted', 'preparing', 'delivered'];
+    const currentStatusIndex = statuses.indexOf(status);
+
+    const getStatusIcon = (s: OrderStatus) => {
+        switch(s) {
+            case 'pending': return <List className="h-5 w-5" />;
+            case 'accepted': return <Check className="h-5 w-5" />;
+            case 'preparing': return <ChefHat className="h-5 w-5" />;
+            case 'delivered': return <PackageCheck className="h-5 w-5" />;
+            default: return <List className="h-5 w-5" />;
+        }
+    }
+
+    const getStatusLabel = (s: OrderStatus) => {
+        if (s === 'delivered') return 'Out for Delivery';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    
+    if (status === 'completed' || status === 'rejected') {
+        return <Badge variant={status === 'completed' ? 'default' : 'destructive'} className="capitalize">{status}</Badge>;
+    }
+
+    return (
+        <div className="w-full pt-2">
+            <div className="relative flex items-center justify-between">
+                <div className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 bg-border" />
+                <div className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 bg-primary transition-all duration-500" style={{ width: `${(currentStatusIndex / (statuses.length - 1)) * 100}%` }} />
+                {statuses.map((s, index) => (
+                    <div key={s} className="relative z-10 flex flex-col items-center">
+                        <div
+                            className={cn(
+                                'flex h-8 w-8 items-center justify-center rounded-full bg-background border-2 transition-colors duration-500',
+                                index <= currentStatusIndex ? 'border-primary' : 'border-border'
+                            )}
+                        >
+                            <div className={cn('flex h-6 w-6 items-center justify-center rounded-full transition-colors duration-500', index <= currentStatusIndex ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                               {getStatusIcon(s)}
+                            </div>
+                        </div>
+                        <span className="mt-1.5 text-xs text-center font-medium text-muted-foreground">{getStatusLabel(s)}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 function groupItemsByStall(items: OrderItem[]) {
     if (!items) return {};
     return items.reduce((acc, item) => {
@@ -49,6 +101,7 @@ function OrderCard({order}: {order: Order}) {
                         </CardDescription>
                     </div>
                 </div>
+                 <OrderStatusTimeline status={order.status} />
             </CardHeader>
             <Separator />
             <CardContent className="space-y-4 pt-4">
