@@ -8,6 +8,7 @@ import PastOrdersList from '@/components/PastOrdersList';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getOrderById, getLatestOrders, getPastOrders } from '@/app/orders/actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 function OrderTrackingPageSkeleton() {
