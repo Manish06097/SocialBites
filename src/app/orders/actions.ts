@@ -7,11 +7,15 @@ import { revalidatePath } from "next/cache";
 
 const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
     if (statuses.every(s => s === 'rejected')) return 'rejected';
+    // If all items are delivered or rejected (but not all rejected), mark as delivered.
     if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
     if (statuses.some(s => s === 'preparing')) return 'preparing';
     if (statuses.some(s => s === 'accepted')) return 'accepted';
     if (statuses.some(s => s === 'pending')) return 'pending';
+    
+    // Explicitly check for completed. This should only happen when manually set.
     if (statuses.every(s => s === 'completed')) return 'completed';
+
     return 'pending'; // Default fallback
 }
 
@@ -23,15 +27,19 @@ interface CreateOrderPayload {
     contactName: string;
     contactPhone: string;
     isVendorOrder?: boolean;
+    // stallId is now crucial for identifying the unique table context
+    stallId: string; 
 }
 
-// Helper function to find an active order for a table
-async function findActiveOrderByTable(tableId: string) {
+// Helper function to find an active order for a table within a specific food court, anchored to a stall
+async function findActiveOrderByTable(tableId: string, foodCourtId: string, stallId: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
         .from('orders')
         .select('id, total_amount, user_id, contact_name, contact_phone')
         .eq('table_id', tableId)
+        .eq('food_court_id', foodCourtId)
+        .eq('anchor_stall_id', stallId) // Use the anchor stall to find the correct tab
         .not('status', 'in', '("completed","rejected")')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -56,8 +64,14 @@ export async function createOrder(payload: CreateOrderPayload) {
     if (payload.cartItems.length === 0) {
         return { error: 'Your cart is empty.' };
     }
+    
+    const foodCourtId = payload.cartItems[0].stall.food_court_id;
+    if (!foodCourtId) {
+        return { error: 'Could not determine the food court for this order.' };
+    }
 
-    const activeOrder = await findActiveOrderByTable(payload.tableId);
+    // Now we pass all three identifiers to find the unique active order
+    const activeOrder = await findActiveOrderByTable(payload.tableId, foodCourtId, payload.stallId);
 
     if (activeOrder) {
         // --- Logic to append to existing order ---
@@ -109,7 +123,6 @@ export async function createOrder(payload: CreateOrderPayload) {
 
     } else {
         // --- Logic to create a new order ---
-        const foodCourtId = payload.cartItems[0].stall.food_court_id;
         const timestamp = Date.now().toString(36);
         const randomPart = Math.random().toString(36).substring(2, 7);
         const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
@@ -129,6 +142,7 @@ export async function createOrder(payload: CreateOrderPayload) {
                 user_id: user?.id,
                 food_court_id: foodCourtId,
                 table_id: payload.tableId,
+                anchor_stall_id: payload.stallId, // Save the anchor stall ID
                 total_amount: payload.cartTotal,
                 status: initialMasterStatus, 
                 contact_name: payload.contactName,

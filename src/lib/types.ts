@@ -103,6 +103,7 @@ export interface Order {
   user_id?: string;
   food_court_id: string;
   table_id: string | null;
+  anchor_stall_id: string | null; // The stall that "owns" the table for this order
   total_amount: number;
   status: OrderStatus; // This will now be a DERIVED status for customer view. The source of truth is order_items.
   created_at: string;

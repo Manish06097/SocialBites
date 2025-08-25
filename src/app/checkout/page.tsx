@@ -108,7 +108,16 @@ export default function CheckoutPage() {
             setIsProcessingPayment(false);
             return;
         }
-        const { tableId } = JSON.parse(tableInfoStr);
+        const { tableId, stallId } = JSON.parse(tableInfoStr);
+
+        if (!stallId) {
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Stall information is missing from your session. Please scan a QR code again.",
+            });
+            return;
+        }
 
         const result = await createOrder({
             paymentMethod,
@@ -117,6 +126,7 @@ export default function CheckoutPage() {
             tableId,
             contactName,
             contactPhone,
+            stallId,
         });
         
         setIsProcessingPayment(false);

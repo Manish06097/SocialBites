@@ -122,9 +122,9 @@ export default function TakeOrderPage() {
                     menuItem,
                     stall: { id: stall.id, name: stall.name, food_court_id: stall.food_court_id },
                     quantity,
-                    totalPrice: newTotalPrice,
                     customizationChoices,
                     specialInstructions,
+                    totalPrice: newTotalPrice,
                 };
                 return [...prevCart, newCartItem];
             }
@@ -163,6 +163,10 @@ export default function TakeOrderPage() {
     };
 
     const handlePlaceOrder = () => {
+        if (!stall) {
+             toast({ variant: 'destructive', title: 'Stall data not loaded' });
+             return;
+        }
         if (cart.length === 0) {
             toast({ variant: 'destructive', title: 'Cart is empty' });
             return;
@@ -185,6 +189,7 @@ export default function TakeOrderPage() {
                 contactPhone: customerPhone,
                 paymentMethod: 'cod',
                 isVendorOrder: true,
+                stallId: stall.id, // Pass the vendor's own stallId as the anchor
             });
 
             if (result.error) {
@@ -351,5 +356,3 @@ export default function TakeOrderPage() {
         </>
     );
 }
-
-    
