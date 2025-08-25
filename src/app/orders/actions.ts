@@ -4,7 +4,16 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { CartItem, Order, PaymentStatus, PaymentMethod, OrderItem, OrderStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
-import { calculateMasterStatus } from "../vendor/actions";
+
+const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    if (statuses.every(s => s === 'rejected')) return 'rejected';
+    if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
+    if (statuses.some(s => s === 'preparing')) return 'preparing';
+    if (statuses.some(s => s === 'accepted')) return 'accepted';
+    if (statuses.some(s => s === 'pending')) return 'pending';
+    if (statuses.every(s => s === 'completed')) return 'completed';
+    return 'pending'; // Default fallback
+}
 
 interface CreateOrderPayload {
     paymentMethod: PaymentMethod;
@@ -41,8 +50,6 @@ export async function createOrder(payload: CreateOrderPayload) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        // This check is mainly for customer-initiated orders.
-        // Vendor orders are handled by the isVendorOrder flag.
         return { error: 'You must be logged in to create an order.' };
     }
 
@@ -79,8 +86,6 @@ export async function createOrder(payload: CreateOrderPayload) {
         
         const newTotalAmount = activeOrder.total_amount + payload.cartTotal;
         
-        // After appending, we need to recalculate the master status.
-        // This prevents a "delivered" order from staying that way if a new item is added.
         const { data: allItems } = await supabase.from('order_items').select('status').eq('order_id', orderId);
         const newMasterStatus = calculateMasterStatus(allItems?.map(i => i.status) as OrderStatus[] || []);
 
@@ -180,8 +185,6 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
         return { order: null, error: 'User not authenticated.' };
     }
 
-    // Since we now append items, we need to make sure we fetch the associated user's order
-    // RLS policy on `orders` table should handle security.
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -195,10 +198,7 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
         .eq('id', orderId)
         .single();
     
-    // Final check to ensure the user owns this order (or is a vendor, handled by RLS)
     if (data && data.user_id !== user.id) {
-         // This logic might need refinement if vendors need to access orders not created by them.
-         // For now, RLS is the primary security boundary.
     }
     
     return { order: data as Order | null, error: error?.message || null };
@@ -212,7 +212,6 @@ export async function getLatestOrders() {
         return { orders: null, error: 'User not authenticated.' };
     }
     
-    // Instead of time, we now define "latest" as non-terminal status
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -250,10 +249,9 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
             )
         `)
         .eq('user_id', user.id)
-        .in('status', ['completed', 'rejected']); // Past orders are only those that are finished
+        .in('status', ['completed', 'rejected']);
 
     if (currentOrderIds.length > 0) {
-        // This is less relevant now that we filter by status, but can stay as a safeguard
         query = query.not('id', 'in', `(${currentOrderIds.join(',')})`);
     }
 
@@ -267,7 +265,7 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
 
     return { 
         orders: data as Order[] | null, 
-        latestOrderIds: fetchedOrderIds, // This prop may be deprecated now
+        latestOrderIds: fetchedOrderIds,
         error: error?.message || null 
     };
 }
@@ -289,7 +287,6 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
         return { error: 'You must be logged in to submit a review.' };
     }
 
-    // Verify user owns the order
     const { data: order, error: orderError } = await supabase
         .from('orders')
         .select('id, user_id')
@@ -300,13 +297,12 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
         return { error: 'You do not have permission to review this order.' };
     }
     
-    // Update each order item with its review and rating
     const updatePromises = reviews.map(r => 
         supabase
             .from('order_items')
             .update({ rating: r.rating, review: r.review })
             .eq('id', r.order_item_id)
-            .eq('order_id', orderId) // Ensure item belongs to the order
+            .eq('order_id', orderId)
     );
     
     const results = await Promise.all(updatePromises);
@@ -314,11 +310,8 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
 
     if (someFailed) {
         console.error('One or more order items failed to update with review.');
-        // Not returning an error to the user for now, as some might have succeeded.
-        // A more robust implementation might use a transaction.
     }
 
-    // Mark the entire order as reviewed
     const { error: finalOrderUpdateError } = await supabase
         .from('orders')
         .update({ is_reviewed: true })

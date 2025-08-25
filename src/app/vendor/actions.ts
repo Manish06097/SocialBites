@@ -167,7 +167,7 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
   revalidatePath(`/orders/${orderId}`);
 }
 
-export const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
     if (statuses.every(s => s === 'rejected')) return 'rejected';
     // If all items are delivered or rejected (but not all rejected), mark as delivered.
     if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
@@ -195,19 +195,14 @@ async function updateMasterOrderStatus(orderId: string) {
         return;
     }
     
-    // The master `orders` table has a `status` field. We derive this status from the children `order_items`.
-    // However, a `completed` status should be sticky. Once an order is paid and done, it's completed.
-    // A new item being added should not change it from `completed`. The `createOrder` logic will create a new one.
     const { data: currentOrder } = await supabase.from('orders').select('status').eq('id', orderId).single();
     if (currentOrder?.status === 'completed' || currentOrder?.status === 'rejected') {
-        // Don't change the status if it's already in a final state.
         return;
     }
 
     const allItemStatuses = orderItems.map(item => item.status as OrderStatus);
     const masterStatus = calculateMasterStatus(allItemStatuses);
     
-    // Now update the master `orders` table
     const { error: orderUpdateError } = await supabase
         .from('orders')
         .update({ status: masterStatus })
