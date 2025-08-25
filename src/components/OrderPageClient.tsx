@@ -8,6 +8,7 @@ import PastOrdersList from '@/components/PastOrdersList';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getOrderById, getLatestOrders, getPastOrders } from '@/app/orders/actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 function OrderTrackingPageSkeleton() {
   return (
@@ -34,6 +35,7 @@ export default function OrderPageClient() {
   }>({ latest: [], past: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const supabase = createSupabaseBrowserClient();
 
@@ -68,6 +70,14 @@ export default function OrderPageClient() {
     const handleOrderUpdate = async (payload: any) => {
         const updatedOrderId = payload.new.id;
         console.log('Realtime `orders` update received for ID:', updatedOrderId, 'New status:', payload.new.status);
+        const isNewItem = payload.new.total_amount > (payload.old.total_amount ?? 0);
+
+        if (isNewItem) {
+            toast({
+                title: "Order Updated!",
+                description: "New items have been added to your order."
+            })
+        }
 
         const { order: fullOrder, error } = await getOrderById(updatedOrderId);
 
@@ -121,7 +131,7 @@ export default function OrderPageClient() {
     return () => {
       supabase.removeChannel(ordersSubscription);
     };
-  }, [supabase, fetchInitialOrders]);
+  }, [supabase, fetchInitialOrders, toast]);
 
   if (loading) {
     return <OrderTrackingPageSkeleton />;
@@ -135,7 +145,7 @@ export default function OrderPageClient() {
     <>
       <div>
         <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
-        <LatestOrdersTracker orders={allOrders.latest} />
+        <LatestOrdersTracker initialOrders={allOrders.latest} />
       </div>
 
       <div>

@@ -28,6 +28,7 @@ export default function CheckoutPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isAppended, setIsAppended] = useState(false);
   
   // User Profile State
   const [user, setUser] = useState<User | null>(null);
@@ -129,6 +130,7 @@ export default function CheckoutPage() {
         } else if (result.orderId) {
             clearCart();
             setIsSuccess(true);
+            setIsAppended(result.appended || false);
             setTimeout(() => router.push('/orders'), 4000);
         }
     });
@@ -155,8 +157,12 @@ export default function CheckoutPage() {
             <div className="absolute">
               <Confetti active={showConfetti} config={confettiConfig} />
             </div>
-            <h1 className="font-headline text-5xl font-extrabold text-primary">Awesome!</h1>
-            <p className="mt-4 text-xl text-foreground">Your order is in and the kitchens are cookin'!</p>
+            <h1 className="font-headline text-5xl font-extrabold text-primary">
+                {isAppended ? 'Items Added!' : 'Awesome!'}
+            </h1>
+            <p className="mt-4 text-xl text-foreground">
+                 {isAppended ? "We've added your new items to your current order." : "Your order is in and the kitchens are cookin'!"}
+            </p>
             <p className="mt-2 text-muted-foreground">You will be redirected to your order tracking page shortly.</p>
         </div>
     )

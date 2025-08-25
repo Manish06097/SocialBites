@@ -346,9 +346,22 @@ function OrdersDisplay() {
     return <OrdersPageSkeleton />;
   }
   
+  // Smart logic to determine which tab an order belongs in.
+  // An order is only "completed" if all of its items for this vendor are in a terminal state.
   const getOrderStatusForVendor = (order: Order): OrderStatus => {
-    // Assuming all items for a vendor in an order have the same status
-    return order.order_items[0]?.status || 'pending'; 
+    const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
+    if (vendorItems.length === 0) return 'completed'; // Should not happen with current queries
+
+    const allItemsAreTerminal = vendorItems.every(item => ['delivered', 'completed', 'rejected'].includes(item.status));
+    if (allItemsAreTerminal) {
+      // If some were rejected but others completed, we still consider the vendors part done.
+      if (vendorItems.some(item => item.status === 'rejected')) return 'rejected';
+      return 'completed';
+    }
+
+    if (vendorItems.some(item => item.status === 'preparing')) return 'preparing';
+    if (vendorItems.some(item => item.status === 'accepted')) return 'accepted';
+    return 'pending';
   };
 
   const pendingOrders = orders.filter(o => getOrderStatusForVendor(o) === 'pending');

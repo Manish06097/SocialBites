@@ -12,16 +12,36 @@ interface CreateOrderPayload {
     tableId: string;
     contactName: string;
     contactPhone: string;
-    isVendorOrder?: boolean; // New optional flag
+    isVendorOrder?: boolean;
 }
+
+// Helper function to find an active order
+async function findActiveOrder(userId: string | undefined, tableId: string) {
+    if (!userId) return null;
+    
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('orders')
+        .select('id, total_amount')
+        .eq('user_id', userId)
+        .eq('table_id', tableId)
+        .not('status', 'in', '("completed","rejected")')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Error finding active order:", error);
+        return null;
+    }
+    return data;
+}
+
 
 export async function createOrder(payload: CreateOrderPayload) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // If it's a vendor placing the order, we might not have a logged-in user in the same sense.
-    // The RLS policies on the 'orders' table must allow the vendor's role to insert.
-    // If it's a customer order, a user must be logged in.
     if (!user && !payload.isVendorOrder) {
         return { error: 'You must be logged in to create an order.' };
     }
@@ -30,74 +50,118 @@ export async function createOrder(payload: CreateOrderPayload) {
         return { error: 'Your cart is empty.' };
     }
 
-    const foodCourtId = payload.cartItems[0].stall.food_court_id;
-    const timestamp = Date.now().toString(36);
-    const randomPart = Math.random().toString(36).substring(2, 7);
-    const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
+    const activeOrder = await findActiveOrder(user?.id, payload.tableId);
 
-    // For vendor-placed orders, we set payment to pending as it's a COD order.
-    // Otherwise, we follow the standard flow for customer orders.
-    const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
-        ? 'pending'
-        : 'pending';
-    
-    // Vendor orders start as 'accepted' since the vendor is inputting them.
-    // Customer orders start as 'pending' for the vendor to accept.
-    const initialMasterStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
-    const initialItemStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
+    if (activeOrder) {
+        // --- Logic to append to existing order ---
+        const orderId = activeOrder.id;
+
+        const orderItemsToInsert = payload.cartItems.map(item => ({
+            order_id: orderId,
+            stall_id: item.stall.id,
+            menu_item_id: item.menuItem.id,
+            quantity: item.quantity,
+            unit_price: item.menuItem.price,
+            total_price: item.totalPrice,
+            customizations: item.customizationChoices,
+            special_instructions: item.specialInstructions,
+            status: payload.isVendorOrder ? 'accepted' : 'pending' as OrderStatus,
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItemsToInsert);
+
+        if (itemsError) {
+            console.error("Error appending order items:", itemsError);
+            return { error: 'Could not add items to your existing order.' };
+        }
+
+        // Update total amount and status of the main order
+        const newTotalAmount = activeOrder.total_amount + payload.cartTotal;
+        const { error: orderUpdateError } = await supabase
+            .from('orders')
+            .update({ 
+                total_amount: newTotalAmount,
+                status: 'pending' // Reset status to pending to signal new activity
+            })
+            .eq('id', orderId);
+            
+        if (orderUpdateError) {
+             console.error("Error updating order total:", orderUpdateError);
+             return { error: 'Could not update your order total.' };
+        }
+
+        revalidatePath(`/orders`);
+        revalidatePath(`/vendor/dashboard/orders`);
+        revalidatePath(`/orders/${orderId}`);
+        return { orderId: orderId, appended: true };
+
+    } else {
+        // --- Logic to create a new order ---
+        const foodCourtId = payload.cartItems[0].stall.food_court_id;
+        const timestamp = Date.now().toString(36);
+        const randomPart = Math.random().toString(36).substring(2, 7);
+        const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
+
+        const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
+            ? 'pending'
+            : 'pending';
+        
+        const initialMasterStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
+        const initialItemStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
 
 
-    const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-            display_id: displayId,
-            user_id: user?.id, // Can be null for vendor orders if RLS is set up correctly
-            food_court_id: foodCourtId,
-            table_id: payload.tableId,
-            total_amount: payload.cartTotal,
-            status: initialMasterStatus, 
-            contact_name: payload.contactName,
-            contact_phone: payload.contactPhone,
-            payment_method: payload.paymentMethod,
-            payment_status: initialPaymentStatus,
-            payment_id: null, // UPI not handled in this flow yet
-        })
-        .select('id')
-        .single();
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+                display_id: displayId,
+                user_id: user?.id,
+                food_court_id: foodCourtId,
+                table_id: payload.tableId,
+                total_amount: payload.cartTotal,
+                status: initialMasterStatus, 
+                contact_name: payload.contactName,
+                contact_phone: payload.contactPhone,
+                payment_method: payload.paymentMethod,
+                payment_status: initialPaymentStatus,
+                payment_id: null,
+            })
+            .select('id')
+            .single();
 
-    if (orderError) {
-        console.error("Error creating order:", orderError);
-        return { error: 'Could not create the order. ' + orderError.message };
+        if (orderError) {
+            console.error("Error creating order:", orderError);
+            return { error: 'Could not create the order. ' + orderError.message };
+        }
+
+        const orderId = orderData.id;
+
+        const orderItemsToInsert = payload.cartItems.map(item => ({
+            order_id: orderId,
+            stall_id: item.stall.id,
+            menu_item_id: item.menuItem.id,
+            quantity: item.quantity,
+            unit_price: item.menuItem.price,
+            total_price: item.totalPrice,
+            customizations: item.customizationChoices,
+            special_instructions: item.specialInstructions,
+            status: initialItemStatus
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItemsToInsert);
+
+        if (itemsError) {
+            console.error("Error inserting order items:", itemsError);
+            return { error: 'Could not save order items.' };
+        }
+        
+        revalidatePath(`/orders`);
+        revalidatePath(`/vendor/dashboard/orders`);
+        return { orderId };
     }
-
-    const orderId = orderData.id;
-
-    const orderItemsToInsert = payload.cartItems.map(item => ({
-        order_id: orderId,
-        stall_id: item.stall.id,
-        menu_item_id: item.menuItem.id,
-        quantity: item.quantity,
-        unit_price: item.menuItem.price,
-        total_price: item.totalPrice,
-        customizations: item.customizationChoices,
-        special_instructions: item.specialInstructions,
-        status: initialItemStatus
-    }));
-
-    const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-    if (itemsError) {
-        console.error("Error inserting order items:", itemsError);
-        // In a real app, you might want to delete the order record here
-        return { error: 'Could not save order items.' };
-    }
-    
-    // Revalidate paths to show new order to both customer and vendor
-    revalidatePath(`/orders`);
-    revalidatePath(`/vendor/dashboard/orders`);
-    return { orderId };
 }
 
 
@@ -109,6 +173,8 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
         return { order: null, error: 'User not authenticated.' };
     }
 
+    // Since we now append items, we need to make sure we fetch the associated user's order
+    // RLS policy on `orders` table should handle security.
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -120,8 +186,12 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
             )
         `)
         .eq('id', orderId)
-        .eq('user_id', user.id)
         .single();
+    
+    // Final check to ensure the user owns this order
+    if (data && data.user_id !== user.id) {
+         return { order: null, error: 'Access denied.' };
+    }
     
     return { order: data as Order | null, error: error?.message || null };
 }
