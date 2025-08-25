@@ -217,15 +217,30 @@ async function updateMasterOrderStatus(orderId: string) {
 export async function markOrderAsPaid(orderId: string) {
     const supabase = await createSupabaseServerClient();
 
-    const { error } = await supabase
+    // Update the master order status to completed and payment status
+    const { error: orderError } = await supabase
         .from('orders')
         .update({ payment_status: 'completed', status: 'completed' })
         .eq('id', orderId);
 
-    if (error) {
-        console.error('Error marking order as paid:', error);
-        throw error;
+    if (orderError) {
+        console.error('Error marking order as paid:', orderError);
+        throw orderError;
     }
+
+    // Update all associated items to 'completed' as well
+    const { error: itemsError } = await supabase
+        .from('order_items')
+        .update({ status: 'completed' })
+        .eq('order_id', orderId);
+        
+    if (itemsError) {
+        console.error('Error marking order items as completed:', itemsError);
+        // Note: The order itself is marked as paid, but items failed.
+        // This is a state that might need manual reconciliation, but we'll proceed.
+        // Throwing here might be too disruptive.
+    }
+
 
     revalidatePath('/vendor/dashboard/orders');
     revalidatePath(`/orders/${orderId}`);
