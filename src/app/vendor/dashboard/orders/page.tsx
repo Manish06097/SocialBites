@@ -75,6 +75,7 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onConfirmPayment, isUpdatin
   }, [order.created_at]);
 
   const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
+  // A vendor's part of the order is paid if all of their items are completed.
   const isPaidForVendor = vendorItems.every(item => item.status === 'completed');
 
   const deliveredItems = vendorItems.filter(item => item.status === 'delivered');
@@ -300,12 +301,13 @@ function OrdersDisplay() {
     });
   };
   
-  const isOrderActive = (order: Order): boolean => {
-      return order.status !== 'completed' && order.status !== 'rejected';
+  // An order is active for this vendor if any of their items are not in a 'completed' or 'rejected' state.
+  const isOrderActiveForVendor = (order: Order): boolean => {
+      return order.order_items.some(item => item.status !== 'completed' && item.status !== 'rejected');
   };
   
-  const activeOrders = useMemo(() => orders.filter(isOrderActive), [orders]);
-  const completedOrders = useMemo(() => orders.filter(o => !isOrderActive(o)), [orders]);
+  const activeOrders = useMemo(() => orders.filter(isOrderActiveForVendor), [orders]);
+  const completedOrders = useMemo(() => orders.filter(o => !isOrderActiveForVendor(o)), [orders]);
   
   const kitchenQueueItems = useMemo(() => {
     return activeOrders

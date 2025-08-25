@@ -168,7 +168,9 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
 }
 
 const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    // If every single item is completed or rejected, the master order is completed.
     if (statuses.every(s => s === 'completed' || s === 'rejected')) return 'completed';
+    // If every single item is rejected, the master order is rejected.
     if (statuses.every(s => s === 'rejected')) return 'rejected';
     // If all items are delivered or rejected (but not all rejected), mark as delivered.
     if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
@@ -202,6 +204,8 @@ async function updateMasterOrderStatus(orderId: string) {
     const newMasterStatus = calculateMasterStatus(allItemStatuses);
     
     const updatePayload: { status: OrderStatus, payment_status?: 'completed' } = { status: newMasterStatus };
+    
+    // Only mark payment as completed if the entire order is finished.
     if (newMasterStatus === 'completed') {
         updatePayload.payment_status = 'completed';
     }
