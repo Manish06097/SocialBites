@@ -74,8 +74,10 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onConfirmPayment, isUpdatin
     return () => clearInterval(interval);
   }, [order.created_at]);
 
-  const isPaid = order.payment_status === 'completed';
-  const deliveredItems = order.order_items.filter(item => item.stall_id === stallId && item.status === 'delivered');
+  const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
+  const isPaidForVendor = vendorItems.every(item => item.status === 'completed');
+
+  const deliveredItems = vendorItems.filter(item => item.status === 'delivered');
   const showPaymentButton = !isCompletedView && deliveredItems.length > 0;
   
   const handleConfirmPayment = () => {
@@ -101,8 +103,8 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onConfirmPayment, isUpdatin
                  </div>
             </div>
             <div className="text-right space-y-1">
-                <Badge variant={isPaid ? "default" : "secondary"} className={cn(isPaid ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
-                    {isPaid ? "PAID" : "COD"}
+                <Badge variant={isPaidForVendor ? "default" : "secondary"} className={cn(isPaidForVendor ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
+                    {isPaidForVendor ? "PAID" : "COD"}
                 </Badge>
                 {isClient ? <p className="text-xs text-muted-foreground">{timeAgo}</p> : <p className="text-xs text-muted-foreground">...</p>}
             </div>
