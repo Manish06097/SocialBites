@@ -75,6 +75,8 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, i
   }, [order.created_at]);
 
   const isPaid = order.payment_status === 'completed';
+  const allItemsDelivered = !isCompletedView && order.order_items.every(item => item.status === 'delivered' || item.status === 'rejected');
+
 
   return (
     <Card>
@@ -142,7 +144,7 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, i
             </div>
         ))}
       </CardContent>
-      { isCompletedView && order.payment_method === 'cod' && order.payment_status !== 'completed' && (
+      { allItemsDelivered && order.payment_method === 'cod' && order.payment_status !== 'completed' && (
         <CardFooter className="py-3 px-4 border-t">
           <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
               <DollarSign className="mr-2 h-4 w-4" />
@@ -391,3 +393,5 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
+
+    
