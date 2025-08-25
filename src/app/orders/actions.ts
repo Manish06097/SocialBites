@@ -75,14 +75,19 @@ export async function createOrder(payload: CreateOrderPayload) {
             console.error("Error appending order items:", itemsError);
             return { error: 'Could not add items to your existing order.' };
         }
-
-        // Update total amount and potentially reset status of the main order
+        
         const newTotalAmount = activeOrder.total_amount + payload.cartTotal;
+        
+        // After appending, we need to recalculate the master status.
+        // This prevents a "delivered" order from staying that way if a new item is added.
+        const { data: allItems } = await supabase.from('order_items').select('status').eq('order_id', orderId);
+        const newMasterStatus = calculateMasterStatus(allItems?.map(i => i.status) as OrderStatus[] || []);
+
         const { error: orderUpdateError } = await supabase
             .from('orders')
             .update({ 
                 total_amount: newTotalAmount,
-                status: 'pending' // Reset status to pending to signal new activity for all parties
+                status: newMasterStatus 
             })
             .eq('id', orderId);
             
@@ -326,5 +331,3 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
     revalidatePath('/orders');
     return { success: true };
 }
-
-    

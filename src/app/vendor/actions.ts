@@ -167,6 +167,22 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
   revalidatePath(`/orders/${orderId}`);
 }
 
+const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    if (statuses.every(s => s === 'completed' || s === 'rejected' || s === 'delivered')) {
+        return 'completed';
+    }
+    if (statuses.some(s => s === 'pending')) return 'pending';
+    if (statuses.some(s => s === 'accepted')) return 'accepted';
+    if (statuses.some(s => s === 'preparing')) return 'preparing';
+    
+    // If all items are delivered but the order isn't complete yet, it's considered 'delivered'
+    if (statuses.every(s => s === 'delivered' || s === 'rejected' || s === 'completed')) {
+        return 'delivered';
+    }
+
+    return 'pending'; // Default fallback
+}
+
 
 // This function determines the master order status based on item statuses
 async function updateMasterOrderStatus(orderId: string) {
@@ -181,21 +197,8 @@ async function updateMasterOrderStatus(orderId: string) {
         return;
     }
 
-    const allItemStatuses = orderItems.map(item => item.status);
-    let masterStatus: OrderStatus = 'pending';
-
-    // Determine master status based on a priority order
-    if (allItemStatuses.every(s => ['completed', 'delivered', 'rejected'].includes(s))) {
-        masterStatus = 'completed';
-    } else if (allItemStatuses.some(s => s === 'pending')) {
-        masterStatus = 'pending';
-    } else if (allItemStatuses.some(s => s === 'accepted')) {
-        masterStatus = 'accepted';
-    } else if (allItemStatuses.some(s => s === 'preparing')) {
-        masterStatus = 'preparing';
-    } else if (allItemStatuses.some(s => s === 'delivered')) {
-        masterStatus = 'delivered';
-    }
+    const allItemStatuses = orderItems.map(item => item.status as OrderStatus);
+    const masterStatus = calculateMasterStatus(allItemStatuses);
     
     // Now update the master `orders` table
     const { error: orderUpdateError } = await supabase
