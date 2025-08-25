@@ -5,6 +5,16 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { CartItem, Order, PaymentStatus, PaymentMethod, OrderItem, OrderStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
+const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    if (statuses.every(s => s === 'rejected')) return 'rejected';
+    if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
+    if (statuses.some(s => s === 'preparing')) return 'preparing';
+    if (statuses.some(s => s === 'accepted')) return 'accepted';
+    if (statuses.some(s => s === 'pending')) return 'pending';
+    if (statuses.every(s => s === 'completed')) return 'completed';
+    return 'pending'; // Default fallback
+}
+
 interface CreateOrderPayload {
     paymentMethod: PaymentMethod;
     cartItems: CartItem[];
@@ -12,17 +22,34 @@ interface CreateOrderPayload {
     tableId: string;
     contactName: string;
     contactPhone: string;
-    isVendorOrder?: boolean; // New optional flag
+    isVendorOrder?: boolean;
 }
+
+// Helper function to find an active order for a table
+async function findActiveOrderByTable(tableId: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('orders')
+        .select('id, total_amount, user_id, contact_name, contact_phone')
+        .eq('table_id', tableId)
+        .not('status', 'in', '("completed","rejected")')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Error finding active order by table:", error);
+        return null;
+    }
+    return data;
+}
+
 
 export async function createOrder(payload: CreateOrderPayload) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // If it's a vendor placing the order, we might not have a logged-in user in the same sense.
-    // The RLS policies on the 'orders' table must allow the vendor's role to insert.
-    // If it's a customer order, a user must be logged in.
-    if (!user && !payload.isVendorOrder) {
+    if (!user) {
         return { error: 'You must be logged in to create an order.' };
     }
 
@@ -30,74 +57,123 @@ export async function createOrder(payload: CreateOrderPayload) {
         return { error: 'Your cart is empty.' };
     }
 
-    const foodCourtId = payload.cartItems[0].stall.food_court_id;
-    const timestamp = Date.now().toString(36);
-    const randomPart = Math.random().toString(36).substring(2, 7);
-    const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
+    const activeOrder = await findActiveOrderByTable(payload.tableId);
 
-    // For vendor-placed orders, we set payment to pending as it's a COD order.
-    // Otherwise, we follow the standard flow for customer orders.
-    const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
-        ? 'pending'
-        : 'pending';
-    
-    // Vendor orders start as 'accepted' since the vendor is inputting them.
-    // Customer orders start as 'pending' for the vendor to accept.
-    const initialMasterStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
-    const initialItemStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
+    if (activeOrder) {
+        // --- Logic to append to existing order ---
+        const orderId = activeOrder.id;
+
+        const orderItemsToInsert = payload.cartItems.map(item => ({
+            order_id: orderId,
+            stall_id: item.stall.id,
+            menu_item_id: item.menuItem.id,
+            quantity: item.quantity,
+            unit_price: item.menuItem.price,
+            total_price: item.totalPrice,
+            customizations: item.customizationChoices,
+            special_instructions: item.specialInstructions,
+            status: payload.isVendorOrder ? 'accepted' : 'pending' as OrderStatus,
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItemsToInsert);
+
+        if (itemsError) {
+            console.error("Error appending order items:", itemsError);
+            return { error: 'Could not add items to your existing order.' };
+        }
+        
+        const newTotalAmount = activeOrder.total_amount + payload.cartTotal;
+        
+        const { data: allItems } = await supabase.from('order_items').select('status').eq('order_id', orderId);
+        const newMasterStatus = calculateMasterStatus(allItems?.map(i => i.status) as OrderStatus[] || []);
+
+        const { error: orderUpdateError } = await supabase
+            .from('orders')
+            .update({ 
+                total_amount: newTotalAmount,
+                status: newMasterStatus 
+            })
+            .eq('id', orderId);
+            
+        if (orderUpdateError) {
+             console.error("Error updating order total:", orderUpdateError);
+             return { error: 'Could not update your order total.' };
+        }
+
+        revalidatePath(`/orders`);
+        revalidatePath(`/vendor/dashboard/orders`);
+        revalidatePath(`/orders/${orderId}`);
+        return { orderId: orderId, appended: true };
+
+    } else {
+        // --- Logic to create a new order ---
+        const foodCourtId = payload.cartItems[0].stall.food_court_id;
+        const timestamp = Date.now().toString(36);
+        const randomPart = Math.random().toString(36).substring(2, 7);
+        const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
+
+        const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
+            ? 'pending' // Vendor orders are COD by default
+            : 'pending';
+        
+        const initialMasterStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
+        const initialItemStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
 
 
-    const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-            display_id: displayId,
-            user_id: user?.id, // Can be null for vendor orders if RLS is set up correctly
-            food_court_id: foodCourtId,
-            table_id: payload.tableId,
-            total_amount: payload.cartTotal,
-            status: initialMasterStatus, 
-            contact_name: payload.contactName,
-            contact_phone: payload.contactPhone,
-            payment_method: payload.paymentMethod,
-            payment_status: initialPaymentStatus,
-            payment_id: null, // UPI not handled in this flow yet
-        })
-        .select('id')
-        .single();
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+                display_id: displayId,
+                user_id: user?.id,
+                food_court_id: foodCourtId,
+                table_id: payload.tableId,
+                total_amount: payload.cartTotal,
+                status: initialMasterStatus, 
+                contact_name: payload.contactName,
+                contact_phone: payload.contactPhone,
+                payment_method: payload.paymentMethod,
+                payment_status: initialPaymentStatus,
+                payment_id: null,
+            })
+            .select('id')
+            .single();
 
-    if (orderError) {
-        console.error("Error creating order:", orderError);
-        return { error: 'Could not create the order. ' + orderError.message };
+        if (orderError) {
+            console.error("Error creating order:", orderError);
+            return { error: 'Could not create the order. ' + orderError.message };
+        }
+
+        const orderId = orderData.id;
+
+        const orderItemsToInsert = payload.cartItems.map(item => ({
+            order_id: orderId,
+            stall_id: item.stall.id,
+            menu_item_id: item.menuItem.id,
+            quantity: item.quantity,
+            unit_price: item.menuItem.price,
+            total_price: item.totalPrice,
+            customizations: item.customizationChoices,
+            special_instructions: item.specialInstructions,
+            status: initialItemStatus
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItemsToInsert);
+
+        if (itemsError) {
+            console.error("Error inserting order items:", itemsError);
+            // Attempt to delete the parent order if items fail, to avoid orphaned orders
+            await supabase.from('orders').delete().eq('id', orderId);
+            return { error: 'Could not save order items.' };
+        }
+        
+        revalidatePath(`/orders`);
+        revalidatePath(`/vendor/dashboard/orders`);
+        return { orderId };
     }
-
-    const orderId = orderData.id;
-
-    const orderItemsToInsert = payload.cartItems.map(item => ({
-        order_id: orderId,
-        stall_id: item.stall.id,
-        menu_item_id: item.menuItem.id,
-        quantity: item.quantity,
-        unit_price: item.menuItem.price,
-        total_price: item.totalPrice,
-        customizations: item.customizationChoices,
-        special_instructions: item.specialInstructions,
-        status: initialItemStatus
-    }));
-
-    const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-    if (itemsError) {
-        console.error("Error inserting order items:", itemsError);
-        // In a real app, you might want to delete the order record here
-        return { error: 'Could not save order items.' };
-    }
-    
-    // Revalidate paths to show new order to both customer and vendor
-    revalidatePath(`/orders`);
-    revalidatePath(`/vendor/dashboard/orders`);
-    return { orderId };
 }
 
 
@@ -120,8 +196,10 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
             )
         `)
         .eq('id', orderId)
-        .eq('user_id', user.id)
         .single();
+    
+    if (data && data.user_id !== user.id) {
+    }
     
     return { order: data as Order | null, error: error?.message || null };
 }
@@ -134,8 +212,6 @@ export async function getLatestOrders() {
         return { orders: null, error: 'User not authenticated.' };
     }
     
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -147,7 +223,6 @@ export async function getLatestOrders() {
             )
         `)
         .eq('user_id', user.id)
-        .gte('created_at', oneHourAgo)
         .not('status', 'in', '("completed","rejected")') // Note the double quotes for SQL strings
         .order('created_at', { ascending: false });
 
@@ -173,8 +248,9 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
                 stalls (name)
             )
         `)
-        .eq('user_id', user.id);
-    
+        .eq('user_id', user.id)
+        .in('status', ['completed', 'rejected']);
+
     if (currentOrderIds.length > 0) {
         query = query.not('id', 'in', `(${currentOrderIds.join(',')})`);
     }
@@ -211,7 +287,6 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
         return { error: 'You must be logged in to submit a review.' };
     }
 
-    // Verify user owns the order
     const { data: order, error: orderError } = await supabase
         .from('orders')
         .select('id, user_id')
@@ -222,13 +297,12 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
         return { error: 'You do not have permission to review this order.' };
     }
     
-    // Update each order item with its review and rating
     const updatePromises = reviews.map(r => 
         supabase
             .from('order_items')
             .update({ rating: r.rating, review: r.review })
             .eq('id', r.order_item_id)
-            .eq('order_id', orderId) // Ensure item belongs to the order
+            .eq('order_id', orderId)
     );
     
     const results = await Promise.all(updatePromises);
@@ -236,11 +310,8 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
 
     if (someFailed) {
         console.error('One or more order items failed to update with review.');
-        // Not returning an error to the user for now, as some might have succeeded.
-        // A more robust implementation might use a transaction.
     }
 
-    // Mark the entire order as reviewed
     const { error: finalOrderUpdateError } = await supabase
         .from('orders')
         .update({ is_reviewed: true })
