@@ -135,6 +135,18 @@ export async function createOrder(payload: CreateOrderPayload) {
         const initialItemStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
 
 
+        // Fetch the anchor stall name
+        const { data: anchorStall, error: anchorStallError } = await supabase
+            .from('stalls')
+            .select('name')
+            .eq('id', payload.stallId)
+            .single();
+
+        if (anchorStallError || !anchorStall) {
+            console.error("Error fetching anchor stall name:", anchorStallError);
+            return { error: 'Could not determine the anchor stall name.' };
+        }
+
         const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .insert({
@@ -143,6 +155,7 @@ export async function createOrder(payload: CreateOrderPayload) {
                 food_court_id: foodCourtId,
                 table_id: payload.tableId,
                 anchor_stall_id: payload.stallId, // Save the anchor stall ID
+                anchor_stall_name: anchorStall.name, // Save the anchor stall name
                 total_amount: payload.cartTotal,
                 status: initialMasterStatus, 
                 contact_name: payload.contactName,
@@ -203,6 +216,7 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
         .from('orders')
         .select(`
             *,
+            anchor_stall_name,
             order_items (
                 *,
                 menu_items (name, image_url),
@@ -230,6 +244,7 @@ export async function getLatestOrders() {
         .from('orders')
         .select(`
             *,
+            anchor_stall_name,
             order_items (
                 *,
                 menu_items (name, image_url),
@@ -256,6 +271,7 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
         .from('orders')
         .select(`
             *,
+            anchor_stall_name,
             order_items (
                 *,
                 menu_items (name, image_url),

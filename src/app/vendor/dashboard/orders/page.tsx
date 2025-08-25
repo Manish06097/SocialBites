@@ -93,6 +93,11 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onConfirmPayment, isUpdatin
         <div className="flex justify-between items-start">
             <div>
                  <CardTitle className="text-xl">Order #{order.display_id.split('-').pop()}</CardTitle>
+                 {order.anchor_stall_name && (
+                    <CardDescription className="text-sm font-semibold text-primary">
+                        From: {order.anchor_stall_name}
+                    </CardDescription>
+                 )}
                  <CardDescription>From {order.contact_name || 'Guest'} at Table {order.table_id || 'N/A'}</CardDescription>
                  <div className="flex items-center gap-2 mt-1">
                     {order.contact_phone && (
