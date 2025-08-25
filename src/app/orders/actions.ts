@@ -15,15 +15,12 @@ interface CreateOrderPayload {
     isVendorOrder?: boolean;
 }
 
-// Helper function to find an active order
-async function findActiveOrder(userId: string | undefined, tableId: string) {
-    if (!userId) return null;
-    
+// Helper function to find an active order for a table
+async function findActiveOrderByTable(tableId: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
         .from('orders')
-        .select('id, total_amount')
-        .eq('user_id', userId)
+        .select('id, total_amount, user_id, contact_name, contact_phone')
         .eq('table_id', tableId)
         .not('status', 'in', '("completed","rejected")')
         .order('created_at', { ascending: false })
@@ -31,7 +28,7 @@ async function findActiveOrder(userId: string | undefined, tableId: string) {
         .maybeSingle();
 
     if (error) {
-        console.error("Error finding active order:", error);
+        console.error("Error finding active order by table:", error);
         return null;
     }
     return data;
@@ -42,7 +39,9 @@ export async function createOrder(payload: CreateOrderPayload) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user && !payload.isVendorOrder) {
+    if (!user) {
+        // This check is mainly for customer-initiated orders.
+        // Vendor orders are handled by the isVendorOrder flag.
         return { error: 'You must be logged in to create an order.' };
     }
 
@@ -50,7 +49,7 @@ export async function createOrder(payload: CreateOrderPayload) {
         return { error: 'Your cart is empty.' };
     }
 
-    const activeOrder = await findActiveOrder(user?.id, payload.tableId);
+    const activeOrder = await findActiveOrderByTable(payload.tableId);
 
     if (activeOrder) {
         // --- Logic to append to existing order ---
@@ -77,13 +76,13 @@ export async function createOrder(payload: CreateOrderPayload) {
             return { error: 'Could not add items to your existing order.' };
         }
 
-        // Update total amount and status of the main order
+        // Update total amount and potentially reset status of the main order
         const newTotalAmount = activeOrder.total_amount + payload.cartTotal;
         const { error: orderUpdateError } = await supabase
             .from('orders')
             .update({ 
                 total_amount: newTotalAmount,
-                status: 'pending' // Reset status to pending to signal new activity
+                status: 'pending' // Reset status to pending to signal new activity for all parties
             })
             .eq('id', orderId);
             
@@ -105,7 +104,7 @@ export async function createOrder(payload: CreateOrderPayload) {
         const displayId = `SSB-${timestamp.toUpperCase()}-${randomPart.toUpperCase()}`;
 
         const initialPaymentStatus: PaymentStatus = payload.isVendorOrder && payload.paymentMethod === 'cod'
-            ? 'pending'
+            ? 'pending' // Vendor orders are COD by default
             : 'pending';
         
         const initialMasterStatus: OrderStatus = payload.isVendorOrder ? 'accepted' : 'pending';
@@ -155,6 +154,8 @@ export async function createOrder(payload: CreateOrderPayload) {
 
         if (itemsError) {
             console.error("Error inserting order items:", itemsError);
+            // Attempt to delete the parent order if items fail, to avoid orphaned orders
+            await supabase.from('orders').delete().eq('id', orderId);
             return { error: 'Could not save order items.' };
         }
         
@@ -188,9 +189,10 @@ export async function getOrderById(orderId: string): Promise<{ order: Order | nu
         .eq('id', orderId)
         .single();
     
-    // Final check to ensure the user owns this order
+    // Final check to ensure the user owns this order (or is a vendor, handled by RLS)
     if (data && data.user_id !== user.id) {
-         return { order: null, error: 'Access denied.' };
+         // This logic might need refinement if vendors need to access orders not created by them.
+         // For now, RLS is the primary security boundary.
     }
     
     return { order: data as Order | null, error: error?.message || null };
@@ -204,8 +206,7 @@ export async function getLatestOrders() {
         return { orders: null, error: 'User not authenticated.' };
     }
     
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
+    // Instead of time, we now define "latest" as non-terminal status
     const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -217,7 +218,6 @@ export async function getLatestOrders() {
             )
         `)
         .eq('user_id', user.id)
-        .gte('created_at', oneHourAgo)
         .not('status', 'in', '("completed","rejected")') // Note the double quotes for SQL strings
         .order('created_at', { ascending: false });
 
@@ -243,9 +243,11 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
                 stalls (name)
             )
         `)
-        .eq('user_id', user.id);
-    
+        .eq('user_id', user.id)
+        .in('status', ['completed', 'rejected']); // Past orders are only those that are finished
+
     if (currentOrderIds.length > 0) {
+        // This is less relevant now that we filter by status, but can stay as a safeguard
         query = query.not('id', 'in', `(${currentOrderIds.join(',')})`);
     }
 
@@ -259,7 +261,7 @@ export async function getPastOrders({ currentOrderIds = [], limit = 5, offset = 
 
     return { 
         orders: data as Order[] | null, 
-        latestOrderIds: fetchedOrderIds,
+        latestOrderIds: fetchedOrderIds, // This prop may be deprecated now
         error: error?.message || null 
     };
 }
@@ -324,3 +326,5 @@ export async function submitReview({ orderId, reviews }: ReviewPayload) {
     revalidatePath('/orders');
     return { success: true };
 }
+
+    

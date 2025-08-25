@@ -189,7 +189,14 @@ export default function TakeOrderPage() {
 
             if (result.error) {
                 toast({ variant: 'destructive', title: 'Failed to place order', description: result.error });
-            } else {
+            } else if (result.appended) {
+                toast({ title: 'Items Added!', description: `New items have been added to the order for table ${tableId}.` });
+                setCart([]);
+                setCustomerName('');
+                setCustomerPhone('');
+                setTableId('');
+            }
+            else {
                 toast({ title: 'Order Placed!', description: `Order for ${customerName} has been submitted.` });
                 setCart([]);
                 setCustomerName('');
@@ -315,7 +322,7 @@ export default function TakeOrderPage() {
                     <CardFooter>
                         <Button className="w-full font-bold" onClick={handlePlaceOrder} disabled={isPending || cart.length === 0}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isPending ? 'Placing Order...' : 'Place Order'}
+                            {isPending ? 'Placing...' : 'Place Order / Add to Order'}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -344,3 +351,5 @@ export default function TakeOrderPage() {
         </>
     );
 }
+
+    
