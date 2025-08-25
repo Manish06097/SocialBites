@@ -184,13 +184,14 @@ function OrdersDisplay() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stallId, setStallId] = useState<string | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [isUpdating, startTransition] = useTransition();
   const { toast } = useToast();
   const supabase = createSupabaseBrowserClient();
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // This effect runs once on mount to initialize the audio element.
+    // It's safe because it doesn't depend on any props or state that change.
     setAudio(new Audio('/notification.mp3'));
   }, []);
 
@@ -201,23 +202,8 @@ function OrdersDisplay() {
   }, []);
   
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        supabase.realtime.setAuth(session?.access_token || null);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  useEffect(() => {
+    // This effect initializes the stallId and fetches initial orders.
+    // It runs once or if fetchOrders changes (which it doesn't).
     const initStall = async () => {
       const id = await getVendorStallId();
       setStallId(id);
@@ -234,7 +220,9 @@ function OrdersDisplay() {
 
 
   useEffect(() => {
-    if (!stallId || !session) return;
+    // This effect sets up the real-time subscription.
+    // It depends on stallId, so it runs when stallId is set.
+    if (!stallId) return;
 
     const channel = supabase
       .channel(`public:order_items:stall_id=eq.${stallId}`)
@@ -260,7 +248,7 @@ function OrdersDisplay() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stallId, supabase, fetchOrders, toast, audio, session]);
+  }, [stallId, supabase, fetchOrders, toast, audio]);
 
   const handleUpdateStatus = (orderId: string, itemId: string, newStatus: OrderStatus) => {
     if (!stallId) return;
@@ -322,8 +310,9 @@ function OrdersDisplay() {
   };
   
   const isOrderActive = (order: Order): boolean => {
-      const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
-      return vendorItems.some(item => !['delivered', 'completed', 'rejected'].includes(item.status));
+      // An order is active if ANY of its items are not in a terminal state.
+      // This is now based on the master order status, which is derived from item statuses.
+      return order.status !== 'completed' && order.status !== 'rejected';
   };
   
   const activeOrders = useMemo(() => orders.filter(isOrderActive), [orders]);
@@ -402,5 +391,3 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
-
-    

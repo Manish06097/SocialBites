@@ -167,18 +167,16 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
   revalidatePath(`/orders/${orderId}`);
 }
 
-const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
-    if (statuses.every(s => s === 'completed' || s === 'rejected' || s === 'delivered')) {
-        return 'completed';
-    }
-    if (statuses.some(s => s === 'pending')) return 'pending';
-    if (statuses.some(s => s === 'accepted')) return 'accepted';
+export const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    if (statuses.every(s => s === 'rejected')) return 'rejected';
+    // If all items are delivered or rejected (but not all rejected), mark as delivered.
+    if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
     if (statuses.some(s => s === 'preparing')) return 'preparing';
+    if (statuses.some(s => s === 'accepted')) return 'accepted';
+    if (statuses.some(s => s === 'pending')) return 'pending';
     
-    // If all items are delivered but the order isn't complete yet, it's considered 'delivered'
-    if (statuses.every(s => s === 'delivered' || s === 'rejected' || s === 'completed')) {
-        return 'delivered';
-    }
+    // Explicitly check for completed. This should only happen when manually set.
+    if (statuses.every(s => s === 'completed')) return 'completed';
 
     return 'pending'; // Default fallback
 }
@@ -194,6 +192,15 @@ async function updateMasterOrderStatus(orderId: string) {
 
     if (itemsError || !orderItems) {
         console.error("Could not fetch order items to update master status", itemsError);
+        return;
+    }
+    
+    // The master `orders` table has a `status` field. We derive this status from the children `order_items`.
+    // However, a `completed` status should be sticky. Once an order is paid and done, it's completed.
+    // A new item being added should not change it from `completed`. The `createOrder` logic will create a new one.
+    const { data: currentOrder } = await supabase.from('orders').select('status').eq('id', orderId).single();
+    if (currentOrder?.status === 'completed' || currentOrder?.status === 'rejected') {
+        // Don't change the status if it's already in a final state.
         return;
     }
 
@@ -217,9 +224,8 @@ export async function markOrderAsPaid(orderId: string) {
 
     const { error } = await supabase
         .from('orders')
-        .update({ payment_status: 'completed' })
-        .eq('id', orderId)
-        .eq('payment_method', 'cod');
+        .update({ payment_status: 'completed', status: 'completed' })
+        .eq('id', orderId);
 
     if (error) {
         console.error('Error marking order as paid:', error);
