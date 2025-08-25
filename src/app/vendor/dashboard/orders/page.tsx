@@ -52,7 +52,7 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, itemId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
+const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, isCompletedView }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, itemId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean, isCompletedView: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
   
@@ -145,7 +145,7 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }:
             </div>
         ))}
       </CardContent>
-      { order.payment_method === 'cod' && order.payment_status !== 'completed' && (
+      { isCompletedView && order.payment_method === 'cod' && order.payment_status !== 'completed' && (
         <CardFooter className="py-3 px-4 border-t">
           <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
               <DollarSign className="mr-2 h-4 w-4" />
@@ -327,12 +327,12 @@ function OrdersDisplay() {
         </TabsList>
         <TabsContent value="active" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {activeOrders.length > 0 ? activeOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No active orders.</p>}
+             {activeOrders.length > 0 ? activeOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} isCompletedView={false} />) : <p className="text-muted-foreground col-span-full text-center py-8">No active orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
+             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} isCompletedView={true} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
