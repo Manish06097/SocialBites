@@ -321,17 +321,13 @@ function OrdersDisplay() {
     });
   };
   
-  if (isLoading || !stallId) {
-    return <OrdersPageSkeleton />;
-  }
-  
   const isOrderActive = (order: Order): boolean => {
       const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
       return vendorItems.some(item => !['delivered', 'completed', 'rejected'].includes(item.status));
   };
   
-  const activeOrders = orders.filter(isOrderActive);
-  const completedOrders = orders.filter(o => !isOrderActive(o));
+  const activeOrders = useMemo(() => orders.filter(isOrderActive), [orders]);
+  const completedOrders = useMemo(() => orders.filter(o => !isOrderActive(o)), [orders]);
   
   const kitchenQueueItems = useMemo(() => {
     return activeOrders
@@ -339,7 +335,10 @@ function OrdersDisplay() {
         .filter(item => item.status === 'preparing');
   }, [activeOrders]);
 
-
+  if (isLoading || !stallId) {
+    return <OrdersPageSkeleton />;
+  }
+  
   return (
     <>
       <div className="flex items-center justify-between">
@@ -403,3 +402,5 @@ export default function VendorOrdersPage() {
     </Suspense>
   )
 }
+
+    
