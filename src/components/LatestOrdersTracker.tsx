@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import type { Order, OrderItem, OrderStatus } from '@/lib/types';
 import { Separator } from './ui/separator';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { Check, ChefHat, PackageCheck, List } from 'lucide-react';
 
@@ -125,7 +124,7 @@ function OrderCard({order}: {order: Order}) {
                                     <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                                 </div>
                             </div>
-                             <Badge variant="outline" className={`font-semibold text-xs`}>{item.status || 'N/A'}</Badge>
+                             <Badge variant="outline" className={`font-semibold text-xs capitalize`}>{item.status || 'N/A'}</Badge>
                         </div>
                     ))}
                     </div>
@@ -140,71 +139,17 @@ interface LatestOrdersTrackerProps {
   initialOrders: Order[];
 }
 
+// This component is now simplified to just render the orders it receives as props.
+// The real-time logic is handled by its parent, OrderPageClient.
 export default function LatestOrdersTracker({ initialOrders }: LatestOrdersTrackerProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
   useEffect(() => {
-    setOrders(initialOrders); // Update state if initialOrders prop changes
+    setOrders(initialOrders); // Update state if the initialOrders prop changes
   }, [initialOrders]);
-
-  useEffect(() => {
-    console.log("LatestOrdersTracker: Component mounted, setting up subscription.");
-    const supabase = createSupabaseBrowserClient();
-    let channel: any = null; // Use 'any' for RealtimeChannel to avoid import issues for now
-
-    const setupSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("LatestOrdersTracker: No user found, cannot set up subscription.");
-        return;
-      }
-      console.log("LatestOrdersTracker: User found, setting up subscription for user ID:", user.id);
-
-      channel = supabase
-        .channel('orders_status_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'orders',
-            filter: `user_id=eq.${user.id}` // Subscribe to all orders for the current user
-          },
-          (payload) => {
-            console.log("LatestOrdersTracker: Received real-time update for order:", payload.new);
-            const updatedOrder = payload.new as Order;
-            setOrders(prevOrders => {
-              const newOrders = prevOrders.map(order => 
-                order.id === updatedOrder.id ? updatedOrder : order
-              );
-              console.log("LatestOrdersTracker: Orders state updated.", newOrders);
-              return newOrders;
-            });
-          }
-        )
-        .subscribe((status) => {
-          console.log("LatestOrdersTracker: Supabase channel subscription status:", status);
-        });
-    };
-
-    setupSubscription();
-
-    return () => {
-      if (channel) {
-        console.log("LatestOrdersTracker: Cleaning up subscription.");
-        supabase.removeChannel(channel);
-      }
-    };
-  }, []); // Empty dependency array: subscribe once on mount
-
+  
   if (orders.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-center text-muted-foreground">
-          You have no active orders from the last hour.
-        </CardContent>
-      </Card>
-    );
+    return null; // The parent component will handle the empty state message.
   }
 
   return (

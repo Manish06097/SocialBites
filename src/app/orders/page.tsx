@@ -1,51 +1,37 @@
+
 'use client';
 
-import { useState } from 'react';
-import PastOrdersList from "@/components/PastOrdersList";
-import LatestOrdersTracker from "@/components/LatestOrdersTracker";
-import type { Order } from "@/lib/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import OrderPageClient from '@/components/OrderPageClient';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Suspense } from 'react';
 
-interface OrdersPageProps {
-    activeOrders: Order[];
-    pastOrders: Order[];
-    latestOrderIds: string[];
+
+function OrderTrackingPageSkeleton() {
+  return (
+    <div className="container mx-auto max-w-4xl px-4 py-8 md:px-6 space-y-8">
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Latest Orders</h2>
+        <div className="space-y-6">
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </div>
+      <div>
+        <h2 className="font-headline text-3xl font-bold mb-4">Past Orders</h2>
+        <Skeleton className="h-48 w-full rounded-lg" />
+      </div>
+    </div>
+  );
 }
 
-export default function OrdersPage({ activeOrders, pastOrders: initialPastOrders, latestOrderIds }: OrdersPageProps) {
-    const [pastOrders, setPastOrders] = useState<Order[]>(initialPastOrders);
 
+export default function OrdersPage() {
+    // This page component now simply wraps the client component
+    // that handles all data fetching and real-time updates.
     return (
         <div className="container mx-auto px-4 py-8">
-            <h1 className="font-headline text-3xl font-bold mb-6">My Orders</h1>
-            <Tabs defaultValue="active" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="active">Active Orders</TabsTrigger>
-                    <TabsTrigger value="past">Past Orders</TabsTrigger>
-                </TabsList>
-                <TabsContent value="active" className="mt-6">
-                    {activeOrders.length > 0 ? (
-                        <LatestOrdersTracker initialOrders={activeOrders} />
-                    ) : (
-                        <div className="text-center text-muted-foreground p-6">
-                            You have no active orders.
-                        </div>
-                    )}
-                </TabsContent>
-                <TabsContent value="past" className="mt-6">
-                    {pastOrders.length > 0 ? (
-                        <PastOrdersList 
-                            initialOrders={pastOrders} 
-                            setPastOrders={setPastOrders} 
-                            latestOrderIds={latestOrderIds} 
-                        />
-                    ) : (
-                        <div className="text-center text-muted-foreground p-6">
-                            You have no past orders.
-                        </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+            <Suspense fallback={<OrderTrackingPageSkeleton />}>
+                <OrderPageClient />
+            </Suspense>
         </div>
     );
 }
