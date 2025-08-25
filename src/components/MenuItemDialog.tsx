@@ -20,10 +20,19 @@ interface MenuItemDialogProps {
   stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // This is a temporary prop to allow the vendor page to use this dialog
+  // with its own cart logic. A better solution might involve a more flexible
+  // cart context or a separate dialog component.
+  _useCartHook?: {
+    addToCart: (item: MenuItem, stall: Pick<Stall, 'id' | 'name' | 'food_court_id'>, quantity: number, customizationChoices?: { [title: string]: string | string[] }, specialInstructions?: string) => void;
+  }
 }
 
-export function MenuItemDialog({ item, stall, open, onOpenChange }: MenuItemDialogProps) {
-  const { addToCart } = useCart();
+export function MenuItemDialog({ item, stall, open, onOpenChange, _useCartHook }: MenuItemDialogProps) {
+  // Use the provided hook for the vendor page, or the real one for customers
+  const cartHook = _useCartHook || useCart();
+  const { addToCart } = cartHook;
+  
   const [quantity, setQuantity] = useState(1);
   const [customizationChoices, setCustomizationChoices] = useState<{ [title: string]: string | string[] }>({});
   const [specialInstructions, setSpecialInstructions] = useState('');

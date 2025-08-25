@@ -15,19 +15,50 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Image from 'next/image';
 import { MinusCircle, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { MenuItemDialog } from '@/components/MenuItemDialog'; // We will reuse the customer dialog
 
-// Helper to calculate total price for a cart item
-const calculateTotalPrice = (menuItem: MenuItem, quantity: number): number => {
-    // This simple version doesn't handle customizations.
-    // A more complex version would iterate through choices.
-    return menuItem.price * quantity;
+const calculateTotalPrice = (
+    menuItem: MenuItem,
+    quantity: number,
+    customizationChoices?: { [key: string]: string | string[] }
+): number => {
+    let itemPrice = menuItem.price;
+    if (customizationChoices && menuItem.customizations) {
+        menuItem.customizations.forEach(cust => {
+            const choice = customizationChoices[cust.title];
+            if (choice && cust.options) {
+                if (Array.isArray(choice)) { // Checkbox
+                    choice.forEach(c => {
+                        const option = cust.options.find(opt => opt.label === c);
+                        if (option) itemPrice += option.price_modifier;
+                    });
+                } else { // Radio
+                    const option = cust.options.find(opt => opt.label === choice);
+                    if (option) itemPrice += option.price_modifier;
+                }
+            }
+        });
+    }
+    return itemPrice * quantity;
 };
 
-// Helper to generate a unique ID for a cart item
-const generateCartItemId = (menuItemId: string): string => {
-    // This simple version assumes no customizations.
-    return menuItemId;
+const generateCartItemId = (
+    menuItemId: string,
+    customizationChoices?: { [key: string]: string | string[] },
+    specialInstructions?: string
+): string => {
+    const customizationsString = customizationChoices
+        ? Object.entries(customizationChoices)
+            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+            .map(([key, value]) => {
+                const aValue = Array.isArray(value) ? [...value].sort().join(',') : value;
+                return `${key}:${aValue}`;
+            })
+            .join(';')
+        : '';
+    return `${menuItemId}-${customizationsString}-${specialInstructions || ''}`;
 };
+
 
 export default function TakeOrderPage() {
     const [stall, setStall] = useState<Stall | null>(null);
@@ -38,6 +69,10 @@ export default function TakeOrderPage() {
     const [tableId, setTableId] = useState('');
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
+    
+    // State for the item customization dialog
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+
 
     useEffect(() => {
         async function fetchStall() {
@@ -63,30 +98,46 @@ export default function TakeOrderPage() {
         return cart.reduce((total, item) => total + item.totalPrice, 0);
     }, [cart]);
 
-    const handleAddToCart = (menuItem: MenuItem) => {
+    // This function will now be called from the dialog
+    const handleAddToCart = (menuItem: MenuItem, quantity: number, customizationChoices: { [key: string]: string | string[] }, specialInstructions: string) => {
+        if (!stall) return;
+
         setCart(prevCart => {
-            const cartItemId = generateCartItemId(menuItem.id);
+            const cartItemId = generateCartItemId(menuItem.id, customizationChoices, specialInstructions);
             const existingItem = prevCart.find(item => item.id === cartItemId);
 
+            const newTotalPrice = calculateTotalPrice(menuItem, quantity, customizationChoices);
+
             if (existingItem) {
-                const newQuantity = existingItem.quantity + 1;
+                const newQuantity = existingItem.quantity + quantity;
+                const updatedTotalPrice = calculateTotalPrice(menuItem, newQuantity, customizationChoices);
                 return prevCart.map(item =>
                     item.id === cartItemId
-                        ? { ...item, quantity: newQuantity, totalPrice: calculateTotalPrice(menuItem, newQuantity) }
+                        ? { ...item, quantity: newQuantity, totalPrice: updatedTotalPrice }
                         : item
                 );
             } else {
                 const newCartItem: CartItem = {
                     id: cartItemId,
                     menuItem,
-                    stall: { id: stall!.id, name: stall!.name, food_court_id: stall!.food_court_id },
-                    quantity: 1,
-                    totalPrice: calculateTotalPrice(menuItem, 1),
+                    stall: { id: stall.id, name: stall.name, food_court_id: stall.food_court_id },
+                    quantity,
+                    totalPrice: newTotalPrice,
+                    customizationChoices,
+                    specialInstructions,
                 };
                 return [...prevCart, newCartItem];
             }
         });
+        toast({ title: "Item added", description: `${quantity}x ${menuItem.name} added to the order.`});
     };
+    
+    const handleItemClick = (menuItem: MenuItem) => {
+        if (menuItem.available) {
+            setSelectedItem(menuItem);
+        }
+    };
+
 
     const handleUpdateQuantity = (cartItemId: string, change: number) => {
         setCart(prevCart => {
@@ -101,7 +152,7 @@ export default function TakeOrderPage() {
 
             return prevCart.map(item =>
                 item.id === cartItemId
-                    ? { ...item, quantity: newQuantity, totalPrice: calculateTotalPrice(item.menuItem, newQuantity) }
+                    ? { ...item, quantity: newQuantity, totalPrice: calculateTotalPrice(item.menuItem, newQuantity, item.customizationChoices) }
                     : item
             );
         });
@@ -132,15 +183,14 @@ export default function TakeOrderPage() {
                 tableId,
                 contactName: customerName,
                 contactPhone: customerPhone,
-                paymentMethod: 'cod', // Assume COD for vendor-placed orders
-                isVendorOrder: true, // Flag to indicate this is a vendor-placed order
+                paymentMethod: 'cod',
+                isVendorOrder: true,
             });
 
             if (result.error) {
                 toast({ variant: 'destructive', title: 'Failed to place order', description: result.error });
             } else {
                 toast({ title: 'Order Placed!', description: `Order for ${customerName} has been submitted.` });
-                // Reset form
                 setCart([]);
                 setCustomerName('');
                 setCustomerPhone('');
@@ -163,6 +213,7 @@ export default function TakeOrderPage() {
     }
 
     return (
+        <>
         <div className="grid gap-8 md:grid-cols-3">
             <div className="md:col-span-2">
                 <Card>
@@ -177,7 +228,12 @@ export default function TakeOrderPage() {
                                     <AccordionContent>
                                         <div className="space-y-4">
                                             {items.map(item => (
-                                                <div key={item.id} className="flex items-center justify-between gap-4">
+                                                <button 
+                                                    key={item.id} 
+                                                    className="flex items-center justify-between gap-4 w-full text-left p-2 rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    onClick={() => handleItemClick(item)} 
+                                                    disabled={!item.available}
+                                                >
                                                     <div className="flex items-center gap-4">
                                                         <Image src={item.imageUrl} alt={item.name} width={56} height={56} className="h-14 w-14 rounded-md object-cover bg-muted" />
                                                         <div>
@@ -185,10 +241,10 @@ export default function TakeOrderPage() {
                                                             <p className="text-sm text-muted-foreground">₹{item.price.toFixed(2)}</p>
                                                         </div>
                                                     </div>
-                                                    <Button onClick={() => handleAddToCart(item)} disabled={!item.available}>
-                                                        {item.available ? 'Add' : 'Sold Out'}
-                                                    </Button>
-                                                </div>
+                                                    <div className="text-right">
+                                                         {item.available ? <span className="text-primary font-semibold text-sm">Add</span> : <span className="text-destructive font-semibold text-sm">Sold Out</span>}
+                                                    </div>
+                                                </button>
                                             ))}
                                         </div>
                                     </AccordionContent>
@@ -210,7 +266,15 @@ export default function TakeOrderPage() {
                                 {cart.map(item => (
                                     <div key={item.id} className="flex items-start justify-between gap-2">
                                         <div className="flex-grow">
-                                            <p className="font-semibold text-sm">{item.menuItem.name}</p>
+                                            <p className="font-semibold text-sm leading-tight">{item.menuItem.name}</p>
+                                            {item.customizationChoices && Object.keys(item.customizationChoices).length > 0 &&
+                                                <p className="text-xs text-muted-foreground">
+                                                {Object.values(item.customizationChoices).flat().join(', ')}
+                                                </p>
+                                            }
+                                            {item.specialInstructions &&
+                                                <p className="text-xs text-muted-foreground italic">"{item.specialInstructions}"</p>
+                                            }
                                             <p className="text-xs text-primary font-bold">₹{item.totalPrice.toFixed(2)}</p>
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -257,5 +321,26 @@ export default function TakeOrderPage() {
                 </Card>
             </div>
         </div>
+        {selectedItem && stall && (
+            <MenuItemDialog
+                item={selectedItem}
+                stall={{id: stall.id, name: stall.name, food_court_id: stall.food_court_id}}
+                open={!!selectedItem}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSelectedItem(null);
+                    }
+                }}
+                // We are adapting the existing dialog, so need a way to pass the vendor's 'addToCart' logic
+                // This is a temporary solution. In a real app, we might create a new dialog or use a more flexible provider.
+                // For now, we hijack the context's addToCart
+                _useCartHook={{
+                    addToCart: (item, stall, quantity, customizationChoices, specialInstructions) => {
+                        handleAddToCart(item, quantity, customizationChoices || {}, specialInstructions || '');
+                    }
+                }}
+            />
+        )}
+        </>
     );
 }
