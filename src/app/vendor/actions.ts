@@ -168,6 +168,7 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
 }
 
 const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
+    if (statuses.every(s => s === 'completed' || s === 'rejected')) return 'completed';
     if (statuses.every(s => s === 'rejected')) return 'rejected';
     // If all items are delivered or rejected (but not all rejected), mark as delivered.
     if (statuses.every(s => s === 'delivered' || s === 'rejected')) return 'delivered';
@@ -175,9 +176,6 @@ const calculateMasterStatus = (statuses: OrderStatus[]): OrderStatus => {
     if (statuses.some(s => s === 'accepted')) return 'accepted';
     if (statuses.some(s => s === 'pending')) return 'pending';
     
-    // Explicitly check for completed. This should only happen when manually set.
-    if (statuses.every(s => s === 'completed')) return 'completed';
-
     return 'pending'; // Default fallback
 }
 
@@ -201,11 +199,16 @@ async function updateMasterOrderStatus(orderId: string) {
     }
 
     const allItemStatuses = orderItems.map(item => item.status as OrderStatus);
-    const masterStatus = calculateMasterStatus(allItemStatuses);
+    const newMasterStatus = calculateMasterStatus(allItemStatuses);
     
+    const updatePayload: { status: OrderStatus, payment_status?: 'completed' } = { status: newMasterStatus };
+    if (newMasterStatus === 'completed') {
+        updatePayload.payment_status = 'completed';
+    }
+
     const { error: orderUpdateError } = await supabase
         .from('orders')
-        .update({ status: masterStatus })
+        .update(updatePayload)
         .eq('id', orderId);
 
     if (orderUpdateError) {
@@ -214,33 +217,27 @@ async function updateMasterOrderStatus(orderId: string) {
 }
 
 
-export async function markOrderAsPaid(orderId: string) {
+export async function confirmPaymentForItems(orderId: string, itemIds: string[]) {
     const supabase = await createSupabaseServerClient();
-
-    // Update the master order status to completed and payment status
-    const { error: orderError } = await supabase
-        .from('orders')
-        .update({ payment_status: 'completed', status: 'completed' })
-        .eq('id', orderId);
-
-    if (orderError) {
-        console.error('Error marking order as paid:', orderError);
-        throw orderError;
+    
+    if (itemIds.length === 0) {
+        throw new Error('No item IDs provided to mark as paid.');
     }
 
-    // Update all associated items to 'completed' as well
+    // Update the specific items to 'completed' status
     const { error: itemsError } = await supabase
         .from('order_items')
         .update({ status: 'completed' })
+        .in('id', itemIds)
         .eq('order_id', orderId);
         
     if (itemsError) {
         console.error('Error marking order items as completed:', itemsError);
-        // Note: The order itself is marked as paid, but items failed.
-        // This is a state that might need manual reconciliation, but we'll proceed.
-        // Throwing here might be too disruptive.
+        throw itemsError;
     }
 
+    // After updating items, check and potentially update the master order status
+    await updateMasterOrderStatus(orderId);
 
     revalidatePath('/vendor/dashboard/orders');
     revalidatePath(`/orders/${orderId}`);
