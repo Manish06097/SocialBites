@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useCallback, Suspense } from 'react';
+import { useState, useEffect, useTransition, useCallback, Suspense, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -56,8 +56,6 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, i
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
   
-  const stallName = order.order_items[0]?.stalls?.name || 'Your Stall';
-
   useEffect(() => {
     setIsClient(true);
     const calculateTimeSince = () => {
@@ -77,7 +75,6 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, i
   }, [order.created_at]);
 
   const isPaid = order.payment_status === 'completed';
-  const isCod = order.payment_method === 'cod';
 
   return (
     <Card>
@@ -155,6 +152,32 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, i
       )}
     </Card>
   )
+}
+
+const KitchenItemCard = ({ item, order, onUpdateStatus, isUpdating }: { item: OrderItem; order: Order; onUpdateStatus: (orderId: string, itemId: string, newStatus: OrderStatus) => void; isUpdating: boolean }) => {
+    return (
+        <Card className="flex flex-col">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-xl leading-tight">{item.menu_items?.name}</CardTitle>
+                <CardDescription>For Order #{order.display_id.split('-').pop()} at Table {order.table_id}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow space-y-3">
+                <div className="text-2xl font-bold">Qty: {item.quantity}</div>
+                <OrderItemCustomizations customizations={item.customizations} />
+                {item.special_instructions && (
+                    <div className="flex items-start gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
+                        <MessageSquareQuote className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm">{item.special_instructions}</p>
+                    </div>
+                )}
+            </CardContent>
+            <CardFooter>
+                <Button size="lg" className="w-full" onClick={() => onUpdateStatus(order.id, item.id, 'delivered')} disabled={isUpdating}>
+                    <PackageCheck className="mr-2 h-5 w-5" /> Food is Ready
+                </Button>
+            </CardFooter>
+        </Card>
+    )
 }
 
 function OrdersDisplay() {
@@ -309,6 +332,12 @@ function OrdersDisplay() {
   
   const activeOrders = orders.filter(isOrderActive);
   const completedOrders = orders.filter(o => !isOrderActive(o));
+  
+  const kitchenQueueItems = useMemo(() => {
+    return activeOrders
+        .flatMap(order => order.order_items.map(item => ({...item, parentOrder: order})))
+        .filter(item => item.status === 'preparing');
+  }, [activeOrders]);
 
 
   return (
@@ -319,15 +348,23 @@ function OrdersDisplay() {
         </h1>
       </div>
       <Tabs defaultValue="active" className="mt-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="active">
             Active <Badge variant="destructive" className="ml-2">{activeOrders.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="kitchen">
+            Kitchen Queue <Badge variant="destructive" className="ml-2">{kitchenQueueItems.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
              {activeOrders.length > 0 ? activeOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} isCompletedView={false} />) : <p className="text-muted-foreground col-span-full text-center py-8">No active orders.</p>}
+          </div>
+        </TabsContent>
+        <TabsContent value="kitchen" className="mt-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {kitchenQueueItems.length > 0 ? kitchenQueueItems.map(item => <KitchenItemCard key={item.id} item={item} order={item.parentOrder} onUpdateStatus={handleUpdateStatus} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No items in the kitchen queue.</p>}
           </div>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
