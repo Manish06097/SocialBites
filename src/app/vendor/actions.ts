@@ -145,21 +145,22 @@ export async function getVendorOrders(stallId: string): Promise<Order[]> {
 }
 
 
-export async function updateOrderItemStatus(orderId: string, stallId: string, newStatus: OrderStatus) {
+export async function updateOrderItemStatus(orderId: string, stallId: string, newStatus: OrderStatus, itemId: string) {
   const supabase = await createSupabaseServerClient();
 
   const { error: itemUpdateError } = await supabase
     .from('order_items')
     .update({ status: newStatus })
+    .eq('id', itemId)
     .eq('order_id', orderId)
-    .eq('stall_id', stallId); // This is the crucial part
+    .eq('stall_id', stallId);
   
   if (itemUpdateError) {
-    console.error('Error updating order items status:', itemUpdateError);
+    console.error('Error updating order item status:', itemUpdateError);
     throw itemUpdateError;
   }
   
-  // After updating items, we need to check if the overall order is completed.
+  // After updating an item, check if the overall order status needs an update.
   await updateMasterOrderStatus(orderId);
   
   revalidatePath('/vendor/dashboard/orders');
@@ -167,7 +168,7 @@ export async function updateOrderItemStatus(orderId: string, stallId: string, ne
 }
 
 
-// This new function determines the master order status based on item statuses
+// This function determines the master order status based on item statuses
 async function updateMasterOrderStatus(orderId: string) {
     const supabase = await createSupabaseServerClient();
     const { data: orderItems, error: itemsError } = await supabase
@@ -184,10 +185,8 @@ async function updateMasterOrderStatus(orderId: string) {
     let masterStatus: OrderStatus = 'pending';
 
     // Determine master status based on a priority order
-    if (allItemStatuses.every(s => s === 'completed')) {
+    if (allItemStatuses.every(s => ['completed', 'delivered', 'rejected'].includes(s))) {
         masterStatus = 'completed';
-    } else if (allItemStatuses.every(s => ['completed', 'rejected'].includes(s))) {
-         masterStatus = 'completed'; // If all are done (either completed or rejected), mark as completed for customer.
     } else if (allItemStatuses.some(s => s === 'pending')) {
         masterStatus = 'pending';
     } else if (allItemStatuses.some(s => s === 'accepted')) {
@@ -217,7 +216,7 @@ export async function markOrderAsPaid(orderId: string) {
         .from('orders')
         .update({ payment_status: 'completed' })
         .eq('id', orderId)
-        .eq('payment_method', 'cod'); // Only for COD orders
+        .eq('payment_method', 'cod');
 
     if (error) {
         console.error('Error marking order as paid:', error);

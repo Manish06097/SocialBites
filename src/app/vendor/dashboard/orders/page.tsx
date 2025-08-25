@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, ChefHat, MessageSquareQuote, PackageCheck, DollarSign, Phone, Home } from 'lucide-react';
+import { CheckCircle, XCircle, ChefHat, PackageCheck, DollarSign, Phone, Home, MessageSquareQuote } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderStatus, OrderItem } from '@/lib/types';
 import { getVendorStallId, getVendorOrders, updateOrderItemStatus, markOrderAsPaid } from '@/app/vendor/actions';
@@ -52,11 +52,10 @@ const OrderItemCustomizations = ({ customizations }: { customizations: any }) =>
     );
 };
 
-const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, currentVendorOrderStatus }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean, currentVendorOrderStatus: OrderStatus }) => {
+const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating }: { order: Order; stallId: string, onUpdateStatus: (orderId: string, itemId: string, newStatus: OrderStatus) => void, onMarkAsPaid: (orderId: string) => void, isUpdating: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
   const [isClient, setIsClient] = useState(false);
   
-  // This will get the stall name from the first item, which is safe since all items belong to the same stall for this vendor.
   const stallName = order.order_items[0]?.stalls?.name || 'Your Stall';
 
   useEffect(() => {
@@ -94,10 +93,6 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, c
                             {order.contact_phone}
                         </CardDescription>
                     )}
-                     <CardDescription className="flex items-center gap-1.5">
-                        <Home className="h-3 w-3" />
-                        {stallName}
-                    </CardDescription>
                  </div>
             </div>
             <div className="text-right space-y-1">
@@ -108,80 +103,56 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onMarkAsPaid, isUpdating, c
             </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <ul className="space-y-3">
-            {order.order_items.map((item) => (
-                <li key={item.id} className="text-sm">
-                    <div className="flex justify-between">
-                        <span className="font-semibold">{item.menu_items?.name}</span>
-                        <div className="flex items-center gap-3">
-                            <span className="font-mono font-semibold">x{item.quantity}</span>
-                            <span className="font-semibold w-16 text-right">₹{item.total_price.toFixed(2)}</span>
-                        </div>
+      <CardContent className="space-y-4">
+        {order.order_items.map((item) => (
+            <div key={item.id} className="space-y-3 rounded-md border p-3">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-semibold">{item.menu_items?.name}</p>
+                        <p className="text-sm text-muted-foreground">Qty: {item.quantity} • ₹{item.total_price.toFixed(2)}</p>
                     </div>
-                     <OrderItemCustomizations customizations={item.customizations} />
-                    {item.special_instructions && (
-                      <div className="mt-1 flex items-start gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
-                        <MessageSquareQuote className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs">{item.special_instructions}</p>
-                      </div>
+                     <Badge variant="outline" className="capitalize">{item.status}</Badge>
+                </div>
+                <OrderItemCustomizations customizations={item.customizations} />
+                {item.special_instructions && (
+                  <div className="flex items-start gap-2 rounded-md bg-yellow-50 border border-yellow-200 p-2 text-yellow-800">
+                    <MessageSquareQuote className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs">{item.special_instructions}</p>
+                  </div>
+                )}
+                 <div className="flex gap-2">
+                    {item.status === 'pending' && (
+                        <>
+                            <Button size="sm" variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, item.id, 'rejected')} disabled={isUpdating}>
+                                <XCircle className="mr-2 h-4 w-4" /> Reject
+                            </Button>
+                            <Button size="sm" className="w-full" onClick={() => onUpdateStatus(order.id, item.id, 'accepted')} disabled={isUpdating}>
+                                <CheckCircle className="mr-2 h-4 w-4" /> Accept
+                            </Button>
+                        </>
                     )}
-                </li>
-            ))}
-        </ul>
-      </CardContent>
-      <Separator />
-      <CardFooter className="py-3 px-4">
-        {currentVendorOrderStatus === 'pending' && (
-            <div className="w-full flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => onUpdateStatus(order.id, 'rejected')} disabled={isUpdating}>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Reject
-                </Button>
-                <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'accepted')} disabled={isUpdating}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Accept
-                </Button>
+                    {item.status === 'accepted' && (
+                        <Button size="sm" className="w-full" onClick={() => onUpdateStatus(order.id, item.id, 'preparing')} disabled={isUpdating}>
+                            <ChefHat className="mr-2 h-4 w-4" /> Mark as Preparing
+                        </Button>
+                    )}
+                    {item.status === 'preparing' && (
+                        <Button size="sm" className="w-full" onClick={() => onUpdateStatus(order.id, item.id, 'delivered')} disabled={isUpdating}>
+                            <PackageCheck className="mr-2 h-4 w-4" /> Mark as Delivered
+                        </Button>
+                    )}
+                </div>
             </div>
-        )}
-        {currentVendorOrderStatus === 'accepted' && (
-            <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isUpdating}>
-                <ChefHat className="mr-2 h-4 w-4" />
-                Mark as Preparing
-            </Button>
-        )}
-        {currentVendorOrderStatus === 'preparing' && (
-             <Button className="w-full" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isUpdating}>
-                <PackageCheck className="mr-2 h-4 w-4" />
-                Mark as Delivered
-            </Button>
-        )}
-        {currentVendorOrderStatus === 'delivered' && (
-            isCod && !isPaid ? (
-                <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
-                    <DollarSign className="mr-2 h-4 w-4" />
-                    Confirm COD Payment
-                </Button>
-            ) : (
-                <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Delivered
-                </p>
-            )
-        )}
-        {currentVendorOrderStatus === 'completed' && (
-            <p className="text-sm text-green-600 font-medium flex items-center w-full justify-center">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Order Completed
-            </p>
-        )}
-        {currentVendorOrderStatus === 'rejected' && (
-            <p className="text-sm text-red-600 font-medium flex items-center w-full justify-center">
-                <XCircle className="mr-2 h-4 w-4" />
-                Order Rejected
-            </p>
-        )}
-      </CardFooter>
+        ))}
+      </CardContent>
+      { order.payment_method === 'cod' && order.payment_status !== 'completed' && (
+        <CardFooter className="py-3 px-4 border-t">
+          <Button className="w-full" onClick={() => onMarkAsPaid(order.id)} disabled={isUpdating}>
+              <DollarSign className="mr-2 h-4 w-4" />
+              Confirm COD Payment Received
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   )
 }
@@ -268,29 +239,29 @@ function OrdersDisplay() {
     };
   }, [stallId, supabase, fetchOrders, toast, audio, session]);
 
-  const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
+  const handleUpdateStatus = (orderId: string, itemId: string, newStatus: OrderStatus) => {
     if (!stallId) return;
-
-    // Optimistically update UI
+    
+    // Optimistic UI update
     setOrders(prevOrders => prevOrders.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          order_items: order.order_items.map(item => ({
-            ...item,
-            status: newStatus,
-          })),
-          // Also optimistically update master status if possible, though server will re-calculate
-          status: newStatus,
-        };
-      }
-      return order;
+        if (order.id === orderId) {
+            return {
+                ...order,
+                order_items: order.order_items.map(item =>
+                    item.id === itemId ? { ...item, status: newStatus } : item
+                ),
+            };
+        }
+        return order;
     }));
+
 
     startTransition(async () => {
       try {
-        await updateOrderItemStatus(orderId, stallId, newStatus);
-        // No need to re-fetch, revalidatePath in server action handles consistency
+        await updateOrderItemStatus(orderId, stallId, newStatus, itemId);
+        // The server action revalidates, so we don't strictly need to refetch,
+        // but it can help ensure consistency if something goes wrong.
+        await fetchOrders(stallId);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -299,7 +270,7 @@ function OrdersDisplay() {
         });
         console.error('Failed to update order status:', error);
         // Revert UI on error
-        fetchOrders(stallId); // Re-fetch to get actual state
+        fetchOrders(stallId);
       }
     });
   };
@@ -307,29 +278,14 @@ function OrdersDisplay() {
   const handleMarkAsPaid = (orderId: string) => {
     if (!stallId) return;
 
-    // Optimistically update UI
-    setOrders(prevOrders => prevOrders.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          payment_status: 'completed',
-          order_items: order.order_items.map(item => ({
-            ...item,
-            status: 'completed', // Mark vendor's items as completed
-          })),
-          status: 'completed', // Optimistically update master status
-        };
-      }
-      return order;
-    }));
+    // Optimistic UI update
+    setOrders(prevOrders => prevOrders.map(order => 
+      order.id === orderId ? { ...order, payment_status: 'completed' } : order
+    ));
 
     startTransition(async () => {
       try {
         await markOrderAsPaid(orderId);
-        if (stallId) {
-          await updateOrderItemStatus(orderId, stallId, 'completed');
-        }
-        // No need to re-fetch, revalidatePath in server action handles consistency
       } catch (error) {
         toast({
           variant: "destructive",
@@ -346,27 +302,14 @@ function OrdersDisplay() {
     return <OrdersPageSkeleton />;
   }
   
-  // Smart logic to determine which tab an order belongs in.
-  // An order is only "completed" if all of its items for this vendor are in a terminal state.
-  const getOrderStatusForVendor = (order: Order): OrderStatus => {
-    const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
-    if (vendorItems.length === 0) return 'completed'; // Should not happen with current queries
-
-    const allItemsAreTerminal = vendorItems.every(item => ['delivered', 'completed', 'rejected'].includes(item.status));
-    if (allItemsAreTerminal) {
-      // If some were rejected but others completed, we still consider the vendors part done.
-      if (vendorItems.some(item => item.status === 'rejected')) return 'rejected';
-      return 'completed';
-    }
-
-    if (vendorItems.some(item => item.status === 'preparing')) return 'preparing';
-    if (vendorItems.some(item => item.status === 'accepted')) return 'accepted';
-    return 'pending';
+  const isOrderActive = (order: Order): boolean => {
+      const vendorItems = order.order_items.filter(item => item.stall_id === stallId);
+      return vendorItems.some(item => !['delivered', 'completed', 'rejected'].includes(item.status));
   };
+  
+  const activeOrders = orders.filter(isOrderActive);
+  const completedOrders = orders.filter(o => !isOrderActive(o));
 
-  const pendingOrders = orders.filter(o => getOrderStatusForVendor(o) === 'pending');
-  const preparingOrders = orders.filter(o => ['accepted', 'preparing'].includes(getOrderStatusForVendor(o)));
-  const completedOrders = orders.filter(o => ['delivered', 'completed', 'rejected'].includes(getOrderStatusForVendor(o)));
 
   return (
     <>
@@ -375,29 +318,21 @@ function OrdersDisplay() {
           Order Management
         </h1>
       </div>
-      <Tabs defaultValue="pending" className="mt-4">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
-          <TabsTrigger value="pending">
-            New <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="preparing">
-            Preparing <Badge className="ml-2">{preparingOrders.length}</Badge>
+      <Tabs defaultValue="active" className="mt-4">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="active">
+            Active <Badge variant="destructive" className="ml-2">{activeOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
-        <TabsContent value="pending" className="mt-4">
+        <TabsContent value="active" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {pendingOrders.length > 0 ? pendingOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No new orders.</p>}
-          </div>
-        </TabsContent>
-        <TabsContent value="preparing" className="mt-4">
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {preparingOrders.length > 0 ? preparingOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No orders are being prepared.</p>}
+             {activeOrders.length > 0 ? activeOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No active orders.</p>}
           </div>
         </TabsContent>
         <TabsContent value="completed" className="mt-4">
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={`${order.id}-${getOrderStatusForVendor(order)}`} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} currentVendorOrderStatus={getOrderStatusForVendor(order)} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
+             {completedOrders.length > 0 ? completedOrders.map(order => <OrderCard key={order.id} order={order} stallId={stallId} onUpdateStatus={handleUpdateStatus} onMarkAsPaid={handleMarkAsPaid} isUpdating={isUpdating} />) : <p className="text-muted-foreground col-span-full text-center py-8">No completed orders yet today.</p>}
           </div>
         </TabsContent>
       </Tabs>
