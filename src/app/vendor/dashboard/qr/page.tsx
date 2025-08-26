@@ -16,6 +16,7 @@ interface StallData {
   id: string;
   name: string;
   foodCourtId: string;
+  logoUrl?: string; // Added logoUrl
 }
 
 interface GeneratedCode {
@@ -23,7 +24,7 @@ interface GeneratedCode {
   url: string;
 }
 
-const QRCodeCard = ({ url, tableId, stallName, onDownload }: { url: string; tableId: string; stallName: string; onDownload: () => Promise<void> }) => {
+const QRCodeCard = ({ url, tableId, stallName, stallLogoUrl, onDownload, innerRef }: { url: string; tableId: string; stallName: string; stallLogoUrl?: string; onDownload: () => Promise<void>; innerRef: React.RefObject<HTMLDivElement> }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
@@ -34,12 +35,30 @@ const QRCodeCard = ({ url, tableId, stallName, onDownload }: { url: string; tabl
 
   return (
     <Card className="flex flex-col">
-      <CardContent className="p-4 flex-grow flex flex-col items-center justify-center text-center">
-        <QRCodeCanvas value={url} size={160} includeMargin={true} />
-        <p className="mt-4 font-bold text-lg">Table: {tableId}</p>
-        <p className="text-muted-foreground text-sm">{stallName}</p>
+      <CardContent className="p-6 flex-grow flex flex-col items-center justify-center text-center bg-white rounded-lg shadow-md">
+        <div ref={innerRef} className="flex flex-col items-center justify-center text-center">
+          <QRCodeCanvas
+            value={url}
+            size={200}
+            includeMargin={true}
+            imageSettings={
+              stallLogoUrl
+                ? {
+                    src: stallLogoUrl,
+                    x: undefined,
+                    y: undefined,
+                    height: 40,
+                    width: 40,
+                    excavate: true,
+                  }
+                : undefined
+            }
+          />
+          <p className="mt-4 font-bold text-xl text-gray-800">Table: {tableId}</p>
+          <p className="text-gray-600 text-base">{stallName}</p>
+        </div>
       </CardContent>
-      <CardFooter className="p-2 border-t">
+      <CardFooter className="p-3 border-t bg-gray-50">
         <Button onClick={handleDownload} disabled={isDownloading} className="w-full">
           {isDownloading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -61,6 +80,8 @@ export default function QrCodePage() {
   const [numTables, setNumTables] = useState(10);
   const [generatedCodes, setGeneratedCodes] = useState<GeneratedCode[]>([]);
   const qrCardRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
+  const qrContentRefs = useRef<React.RefObject<HTMLDivElement>[]>([]); // New ref for content to download
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false); // New state for "Download All" button
 
   useEffect(() => {
     async function fetchStallData() {
@@ -76,7 +97,7 @@ export default function QrCodePage() {
 
       const { data: stallData, error: stallError } = await supabase
         .from('stalls')
-        .select('id, name, food_court_id')
+        .select('id, name, food_court_id, logo_url')
         .eq('owner_id', user.id)
         .single();
       
@@ -88,6 +109,7 @@ export default function QrCodePage() {
           id: stallData.id,
           name: stallData.name,
           foodCourtId: stallData.food_court_id,
+          logoUrl: '/logo.png', // Always use the local website logo for QR codes
         });
       }
       setLoading(false);
@@ -107,19 +129,20 @@ export default function QrCodePage() {
         };
       });
       qrCardRefs.current = newCodes.map(() => createRef<HTMLDivElement>());
+      qrContentRefs.current = newCodes.map(() => createRef<HTMLDivElement>()); // Initialize new ref array
       setGeneratedCodes(newCodes);
     }
   };
 
   const handleDownload = async (index: number, tableId: string) => {
-    const element = qrCardRefs.current[index]?.current;
-    if (!element) return;
+    const elementToDownload = qrContentRefs.current[index]?.current; // Use the new ref
+    if (!elementToDownload) {
+      console.error('Could not find content element for download.');
+      return;
+    }
     
-    const contentElement = element.querySelector<HTMLElement>('.p-4');
-    if (!contentElement) return;
-
     try {
-      const dataUrl = await toPng(contentElement, { cacheBust: true, pixelRatio: 2 });
+      const dataUrl = await toPng(elementToDownload, { cacheBust: true, pixelRatio: 2 });
       const link = document.createElement('a');
       link.download = `qr-table-${tableId}.png`;
       link.href = dataUrl;
@@ -127,6 +150,18 @@ export default function QrCodePage() {
     } catch (err) {
       console.error('Failed to download QR code image', err);
     }
+  };
+
+  const handleDownloadAll = async () => {
+    setIsDownloadingAll(true);
+    for (let i = 0; i < generatedCodes.length; i++) {
+      const code = generatedCodes[i];
+      const tableId = `T${code.tableNumber}`;
+      await handleDownload(i, tableId);
+      // Add a small delay to prevent browser from blocking multiple downloads
+      await new Promise(resolve => setTimeout(resolve, 200)); 
+    }
+    setIsDownloadingAll(false);
   };
 
   if (loading) {
@@ -189,21 +224,35 @@ export default function QrCodePage() {
         </Card>
         
         {generatedCodes.length > 0 && (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {generatedCodes.map((code, index) => {
-              const tableId = `T${code.tableNumber}`;
-              return (
-                <div ref={qrCardRefs.current[index]} key={code.tableNumber}>
-                  <QRCodeCard
-                    url={code.url}
-                    tableId={tableId}
-                    stallName={stall.name}
-                    onDownload={() => handleDownload(index, tableId)}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <>
+            <div className="flex justify-end">
+              <Button onClick={handleDownloadAll} disabled={isDownloadingAll} className="w-full sm:w-auto">
+                {isDownloadingAll ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download All QR Codes
+              </Button>
+            </div>
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {generatedCodes.map((code, index) => {
+                const tableId = `T${code.tableNumber}`;
+                return (
+                  <div ref={qrCardRefs.current[index]} key={code.tableNumber}>
+                    <QRCodeCard
+                      url={code.url}
+                      tableId={tableId}
+                      stallName={stall.name}
+                      stallLogoUrl={stall.logoUrl}
+                      onDownload={() => handleDownload(index, tableId)}
+                      innerRef={qrContentRefs.current[index]} // Pass the new ref
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </>
