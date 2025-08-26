@@ -171,27 +171,35 @@ function StallPageContent() {
     <>
       <div className="w-full">
          <div className="relative">
-            <div className="relative h-48 w-full md:h-64">
-              <Image
-                src={stall.banner_url}
-                alt={`${stall.name} banner`}
-                fill
-                style={{objectFit: 'cover'}}
-                className="bg-muted object-cover"
-                data-ai-hint="food stall"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            </div>
+            {stall.banner_url ? (
+              <div className="relative h-48 w-full md:h-64">
+                <Image
+                  src={stall.banner_url}
+                  alt={`${stall.name} banner`}
+                  fill
+                  style={{objectFit: 'cover'}}
+                  className="bg-muted object-cover"
+                  data-ai-hint="food stall"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+            ) : (
+              <Skeleton className="relative h-48 w-full md:h-64" />
+            )}
              <div className="container relative mx-auto px-4 md:px-6">
                 <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
-                     <Image
-                        src={stall.logo_url}
-                        alt={`${stall.name} logo`}
-                        width={96}
-                        height={96}
-                        className="h-24 w-24 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
-                        data-ai-hint="company logo"
-                      />
+                     {stall.logo_url ? (
+                       <Image
+                          src={stall.logo_url}
+                          alt={`${stall.name} logo`}
+                          width={96}
+                          height={96}
+                          className="h-24 w-24 rounded-full border-4 border-background bg-card object-cover md:h-32 md:w-32"
+                          data-ai-hint="company logo"
+                        />
+                     ) : (
+                       <Skeleton className="h-24 w-24 rounded-full border-4 border-background bg-card md:h-32 md:w-32" />
+                     )}
                     <div className="pb-2">
                       <h1 className="font-headline text-2xl font-extrabold text-white [text-shadow:1px_1px_3px_#000000a0] md:text-4xl">{stall.name}</h1>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white">
@@ -207,7 +215,7 @@ function StallPageContent() {
                         </div>
                         <div className="hidden items-center gap-2 sm:flex">
                           <span className="hidden sm:inline">•</span>
-                          <span className="hidden sm:inline">{stall.tags.join(', ')}</span>
+                          <span className="hidden sm:inline">{stall.tags?.join(', ') || ''}</span>
                         </div>
                       </div>
                     </div>
@@ -218,7 +226,7 @@ function StallPageContent() {
 
       <div className="container mx-auto px-4 py-8 md:px-6">
         <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
-            {stall.tags.map(tag => <div key={tag} className="text-xs text-muted-foreground">#{tag}</div>)}
+            {stall.tags?.map(tag => <div key={tag} className="text-xs text-muted-foreground">#{tag}</div>) || null}
         </div>
         {stall.menu.map((category, index) => (
           <section key={index} id={category.title.replace(/\s+/g, '-').toLowerCase()} className="mb-12 scroll-mt-20">
