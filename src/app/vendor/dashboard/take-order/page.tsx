@@ -247,7 +247,7 @@ export default function TakeOrderPage() {
                                                     disabled={!item.available}
                                                 >
                                                     <div className="flex items-center gap-4">
-                                                        <Image src={item.imageUrl} alt={item.name} width={56} height={56} className="h-14 w-14 rounded-md object-cover bg-muted" />
+                                                        <Image src={item.imageUrl.trimEnd()} alt={item.name} width={56} height={56} className="h-14 w-14 rounded-md object-cover bg-muted" />
                                                         <div>
                                                             <p className="font-semibold">{item.name}</p>
                                                             <p className="text-sm text-muted-foreground">₹{item.price.toFixed(2)}</p>
