@@ -112,6 +112,7 @@ const OrderCard = ({ order, stallId, onUpdateStatus, onConfirmPayment, isUpdatin
                 <Badge variant={isPaidForVendor ? "default" : "secondary"} className={cn(isPaidForVendor ? "bg-green-600 text-white" : "bg-yellow-500 text-white")}>
                     {isPaidForVendor ? "PAID" : "COD"}
                 </Badge>
+                <p className="text-sm font-bold">₹{order.total_amount.toFixed(2)}</p>
                 {isClient ? <p className="text-xs text-muted-foreground">{timeAgo}</p> : <p className="text-xs text-muted-foreground">...</p>}
             </div>
         </div>
