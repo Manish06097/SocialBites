@@ -260,9 +260,9 @@ function StallPageContent() {
               <span className="sr-only">Browse Categories</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-64 p-2" side="top" align="end">
+          <PopoverContent className="w-64 p-2 flex flex-col max-h-[400px]" side="top" align="end">
               <h4 className="px-2 py-1.5 font-semibold font-headline">Categories</h4>
-              <ScrollArea className="h-auto max-h-64">
+              <ScrollArea className="flex-grow overflow-y-auto">
                 <div className="flex flex-col gap-1 p-1">
                     {stall.menu.map((category) => (
                       <Link
