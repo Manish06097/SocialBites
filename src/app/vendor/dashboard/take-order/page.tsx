@@ -233,7 +233,7 @@ export default function TakeOrderPage() {
                         <CardTitle className="font-headline text-2xl">{stall.name}'s Menu</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Accordion type="multiple" defaultValue={Object.keys(menuItemsByCategory)} className="w-full">
+                        <Accordion type="single" collapsible className="w-full">
                             {Object.entries(menuItemsByCategory).map(([category, items]) => (
                                 <AccordionItem key={category} value={category}>
                                     <AccordionTrigger className="font-headline text-xl">{category}</AccordionTrigger>
