@@ -29,10 +29,32 @@ interface ComboboxProps {
 }
 
 export function Combobox({ options, value, onChange, placeholder, emptyMessage }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState(value);
+
+  React.useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  const handleSelect = (currentValue: string, label: string) => {
+    onChange(currentValue === value ? "" : currentValue);
+    setInputValue(label); // Update input to show selected label
+    setOpen(false);
+  };
+
+  const handleCreateNew = () => {
+    onChange(inputValue);
+    setOpen(false);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(newOpen) => {
+      setOpen(newOpen);
+      if (!newOpen) {
+        // Reset inputValue to current value when popover closes
+        setInputValue(value);
+      }
+    }}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -47,11 +69,11 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage }
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput 
             placeholder={placeholder || "Search or create..."}
-            onInput={(e) => onChange(e.currentTarget.value)}
-            value={value}
+            value={inputValue}
+            onValueChange={setInputValue}
           />
           <CommandList>
             <CommandEmpty>{emptyMessage || "No option found."}</CommandEmpty>
@@ -59,11 +81,8 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage }
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue)
-                    setOpen(false)
-                  }}
+                  value={option.label} // Use label for filtering and display in CommandInput
+                  onSelect={() => handleSelect(option.value, option.label)}
                 >
                   <Check
                     className={cn(
@@ -74,17 +93,14 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage }
                   {option.label}
                 </CommandItem>
               ))}
-              {/* Option to create new if not in list */}
-               {value && !options.some(opt => opt.value.toLowerCase() === value.toLowerCase()) && (
+              {/* Option to create new if not in list and inputValue is not empty */}
+               {inputValue && !options.some(opt => opt.value.toLowerCase() === inputValue.toLowerCase()) && (
                   <CommandItem
-                    value={value}
-                    onSelect={() => {
-                      onChange(value);
-                      setOpen(false);
-                    }}
+                    value={inputValue}
+                    onSelect={handleCreateNew}
                   >
                     <Check className="mr-2 h-4 w-4 opacity-0" />
-                    Create "{value}"
+                    Create "{inputValue}"
                   </CommandItem>
                )}
             </CommandGroup>
