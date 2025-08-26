@@ -70,7 +70,7 @@ export function MenuItemDialog({ item, stall, open, onOpenChange, _useCartHook }
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-start gap-4">
              <Image 
-                src={item.imageUrl} 
+                src={item.imageUrl.trimEnd()} 
                 alt={item.name} 
                 width={80} 
                 height={80} 

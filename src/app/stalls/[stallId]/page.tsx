@@ -32,7 +32,7 @@ function MenuItemCard({ item, onAddToCartClick }: { item: MenuItem, onAddToCartC
         )}>
              <div className="relative w-full aspect-[4/3]">
                 <Image
-                    src={item.imageUrl}
+                    src={item.imageUrl.trimEnd()}
                     alt={item.name}
                     fill
                     className="object-cover bg-muted"
@@ -174,7 +174,7 @@ function StallPageContent() {
             {stall.banner_url ? (
               <div className="relative h-48 w-full md:h-64">
                 <Image
-                  src={stall.banner_url}
+                  src={stall.banner_url.trimEnd()}
                   alt={`${stall.name} banner`}
                   fill
                   style={{objectFit: 'cover'}}
@@ -190,7 +190,7 @@ function StallPageContent() {
                 <div className="relative z-10 -mt-12 flex items-end gap-4 md:-mt-16">
                      {stall.logo_url ? (
                        <Image
-                          src={stall.logo_url}
+                          src={stall.logo_url.trimEnd()}
                           alt={`${stall.name} logo`}
                           width={96}
                           height={96}
